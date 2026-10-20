@@ -7,7 +7,14 @@ How to run DirSync Pro:
   command to run DirSync Pro with 512MB (adjust to own will):
   java -Xmx512M -jar dirsyncpro.jar
 
-  The wrapper DirSyncPro.exe itself already uses 512MB memory. 
+  The wrapper DirSyncPro.exe itself already uses 512MB memory.
+
+Testing:
+  From the project root, run the automated test suite with Maven:
+  mvn test
+
+  For quieter output during development:
+  mvn test -q
 
 Requirements:
   Java Runtime Environment (JRE) 1.6.0 or higher. You can download JRE at 

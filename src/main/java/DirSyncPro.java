@@ -353,12 +353,22 @@ public class DirSyncPro {
 		return gui;
 	}
 
+	private static Properties ensureProperties() {
+		if (properties == null) {
+			properties = new Properties();
+			for (Const.Properties pr : Const.Properties.values()) {
+				properties.put(pr.getPrString(), properties.getProperty(pr.getPrString(), pr.getDefault()));
+			}
+		}
+		return properties;
+	}
+
 	/**
 	 * Get the properties.
 	 * @return The properties.
 	 */
 	private static Properties getProperties() {
-		return properties;
+		return ensureProperties();
 	}
 
 	/**
@@ -435,11 +445,16 @@ public class DirSyncPro {
 	 */
 	private static void saveProperties() {
 		try { // write properties to disk
+			ensureProperties();
 			String path = getHomePath();
 			if (path.equals("")){
 				path = null;
 			}
-			String filename = new File(path, Const.PROPERTIES_FILENAME).getCanonicalPath();
+			File propertyDir = path == null ? new File(".") : new File(path);
+			if (!propertyDir.exists() && !propertyDir.mkdirs()) {
+				return;
+			}
+			String filename = new File(propertyDir, Const.PROPERTIES_FILENAME).getCanonicalPath();
 			FileOutputStream out = new FileOutputStream(filename);
 			properties.store(out, "Properties of DirSync Pro " + Const.VERSION);
 			out.close();
@@ -454,6 +469,9 @@ public class DirSyncPro {
 	 */
 	public static void setSync(Sync sync) {
 		DirSyncPro.sync = sync;
+		if (DirSyncPro.sync != null && log == null) {
+			setUpLogFile(isGlobalLogEnabled());
+		}
 	}
 
 	/**
@@ -563,6 +581,7 @@ public class DirSyncPro {
 	 * @return the path
 	 */
 	public static String getConfigPath(boolean withFileSeprator){
+		ensureProperties();
 		String path = properties.getProperty(Const.Properties.ConfigPath.getPrString(), getHomePath());
 		File f = new File(path);
 		f = new File(f.getAbsolutePath());
@@ -578,7 +597,8 @@ public class DirSyncPro {
 	 * @param cp the path
 	 */
 	public static void setConfigPath(String cp){
-		if (FileTools.directoryIsWritable(cp)){	
+		ensureProperties();
+		if (FileTools.directoryIsWritable(cp)){ 	
 			properties.setProperty(Const.Properties.ConfigPath.getPrString(), cp);
 		}else{
 			properties.setProperty(Const.Properties.ConfigPath.getPrString(), getHomePath());
@@ -593,6 +613,7 @@ public class DirSyncPro {
 	 * @return the path.
 	 */
 	public static String getLogsPath(boolean withFileSeprator){
+		ensureProperties();
 		String path = properties.getProperty(Const.Properties.LogsPath.getPrString(), getHomePath());
 		File f = new File(path);
 		f = new File(f.getAbsolutePath());
@@ -608,6 +629,7 @@ public class DirSyncPro {
 	 * @param lp the path
 	 */
 	public static void setLogsPath(String lp){
+		ensureProperties();
 		String path = lp;
 		if (FileTools.directoryIsWritable(path)){
 			properties.setProperty(Const.Properties.LogsPath.getPrString(), path);
@@ -624,6 +646,7 @@ public class DirSyncPro {
 	 * @return the logsInline
 	 */
 	public static boolean isLogsInline() {
+		ensureProperties();
 		return properties.getProperty(Const.Properties.LogsPath.getPrString(), getHomePath()).equals("");
 	}
 
@@ -640,6 +663,7 @@ public class DirSyncPro {
 	 * @return the configInline
 	 */
 	public static boolean isConfigInline() {
+		ensureProperties();
 		return properties.getProperty(Const.Properties.ConfigPath.getPrString(), getHomePath()).equals("");
 	}
 
@@ -657,10 +681,12 @@ public class DirSyncPro {
 	 * @return boolean if the license for this version is already accepted.
 	 */
 	public static boolean isLicenseAccepted(){
+		ensureProperties();
 		return properties.getProperty(Const.Properties.LicenseAccepted.getPrString(), "").equalsIgnoreCase(Const.PROGRAM);
 	}
 	
 	public static void setLicenseAccepted(){
+		ensureProperties();
 		properties.setProperty(Const.Properties.LicenseAccepted.getPrString(), Const.PROGRAM);
 		saveProperties();
 	}
@@ -670,47 +696,56 @@ public class DirSyncPro {
 	 * @return boolean if should check for updates automatically
 	 */
 	public static boolean isCheckforUpdate(){
+		ensureProperties();
 		return Boolean.valueOf(properties.getProperty(Const.Properties.CheckForUpdates.getPrString(), Const.Properties.CheckForUpdates.getDefault()));
 	}
 	
 	public static void setCheckForUpdates(boolean cu){
+		ensureProperties();
 		properties.setProperty(Const.Properties.CheckForUpdates.getPrString(), Boolean.toString(cu));
 		saveProperties();
 	}
 
 	public static boolean isMinimizeToSystemTray(){
+		ensureProperties();
 		return Boolean.valueOf(properties.getProperty(Const.Properties.MinimizeToSystemTray.getPrString(), Const.Properties.MinimizeToSystemTray.getDefault()));
 	}
 	
 	public static void setMinimizeToSystemTray(boolean singleclick){
+		ensureProperties();
 		properties.setProperty(Const.Properties.MinimizeToSystemTray.getPrString(), Boolean.toString(singleclick));
 		saveProperties();
 	}
 
 	public static boolean isSingleClickSystemTray(){
+		ensureProperties();
 		return Boolean.valueOf(properties.getProperty(Const.Properties.SystemTraySingleClick.getPrString(), Const.Properties.SystemTraySingleClick.getDefault()));
 	}
 	
 	public static void setSingleClickSystemTray(boolean singleClick){
+		ensureProperties();
 		properties.setProperty(Const.Properties.SystemTraySingleClick.getPrString(), Boolean.toString(singleClick));
 		saveProperties();
 	}
 
 	public static boolean isKeepSyncQAfterSync(){
+		ensureProperties();
 		return Boolean.valueOf(properties.getProperty(Const.Properties.KeepAfterSync.getPrString(), Const.Properties.KeepAfterSync.getDefault()));
 	}
 	
 	public static void setKeepSyncQAfterSync(boolean keepSyncQAfterSync){
+		ensureProperties();
 		properties.setProperty(Const.Properties.KeepAfterSync.getPrString(), Boolean.toString(keepSyncQAfterSync));
 		saveProperties();
 	}
 
 	public static boolean isLoadLastConfig(){
+		ensureProperties();
 		return Boolean.valueOf(properties.getProperty(Const.Properties.LoadLastConfig.getPrString(), Const.Properties.LoadLastConfig.getDefault()));
 	}
 	
 	public static void setLoadLastConfig(boolean loadLastConfig){
-		properties.setProperty(Const.Properties.LoadLastConfig.getPrString(), Boolean.toString(loadLastConfig));
+		ensureProperties();
 		saveProperties();
 	}
 
@@ -741,6 +776,7 @@ public class DirSyncPro {
 	}
 
 	public static File[] getLastLoadedConfigs(){
+		ensureProperties();
 		String[] configs = properties.getProperty(Const.Properties.LastLoadedConfigs.getPrString(), "").split(", ", Const.OPEN_RECENT_NUMBER_OF_DOCS);
 		ArrayList<File> configFiles = new ArrayList<File>();
 		for (String s : configs){
@@ -754,6 +790,7 @@ public class DirSyncPro {
 	}
 	
 	private static void setLastLoadedConfigs(File[] configFiles){
+		ensureProperties();
 		String s = "";
 		for (File f : configFiles){
 			if (f.exists() && f.isFile()){
@@ -766,52 +803,63 @@ public class DirSyncPro {
 	}
 
 	public static boolean isSystemLookAndFeel(){
+		ensureProperties();
 		return Boolean.valueOf(properties.getProperty(Const.Properties.SystemLookAndFeel.getPrString(), Const.Properties.SystemLookAndFeel.getDefault()));
 	}
 	
 	public static void setSystemLookAndFeel(boolean slf){
+		ensureProperties();
 		properties.setProperty(Const.Properties.SystemLookAndFeel.getPrString(), Boolean.toString(slf));
 		saveProperties();
 	}
 
 	public static LogLevel getLogLevel(){
+		ensureProperties();
 		return Enum.valueOf(LogLevel.class, (properties.getProperty(Const.Properties.LogLevel.getPrString(), Const.Properties.LogLevel.getDefault())));
 	}
 	
 	public static void setLogLevel(LogLevel ll){
+		ensureProperties();
 		properties.setProperty(Const.Properties.LogLevel.getPrString(), ll.toString());
 		getSync().setLogLevel(ll);
 		saveProperties();
 	}
 
 	public static boolean isGlobalLogEnabled(){
+		ensureProperties();
 		return Boolean.valueOf(properties.getProperty(Const.Properties.GlobalLogEnabled.getPrString(), Const.Properties.GlobalLogEnabled.getDefault()));
 	}
 	
 	public static void setGlobalLogEnabled(boolean enabled){
+		ensureProperties();
 		properties.setProperty(Const.Properties.GlobalLogEnabled.getPrString(), Boolean.toString(enabled));
 		saveProperties();
 	}
 
 	public static boolean isJobsetLogEnabled(){
+		ensureProperties();
 		return Boolean.valueOf(properties.getProperty(Const.Properties.JobsetLogEnabled.getPrString(), Const.Properties.JobsetLogEnabled.getDefault()));
 	}
 	
 	public static void setJobsetLogEnabled(boolean enabled){
+		ensureProperties();
 		properties.setProperty(Const.Properties.JobsetLogEnabled.getPrString(), Boolean.toString(enabled));
 		saveProperties();
 	}
 
 	public static boolean isStartScheduleEngineOnStartup(){
+		ensureProperties();
 		return Boolean.valueOf(properties.getProperty(Const.Properties.StartScheduleEngine.getPrString(), Const.Properties.StartScheduleEngine.getDefault()));
 	}
 	
 	public static void setStartScheduleEngineOnStartup(boolean enabled){
+		ensureProperties();
 		properties.setProperty(Const.Properties.StartScheduleEngine.getPrString(), Boolean.toString(enabled));
 		saveProperties();
 	}
 	
 	public static void setWindowLastGeometries(int x, int y, int width, int height){
+		ensureProperties();
 		properties.setProperty(Const.Properties.WindowLastGeometryX.getPrString(), x + "");
 		properties.setProperty(Const.Properties.WindowLastGeometryY.getPrString(), y + "");
 		properties.setProperty(Const.Properties.WindowLastGeometryWidth.getPrString(), width + "");
@@ -820,26 +868,32 @@ public class DirSyncPro {
 	}
 	
 	public static int getWindowLastGeomteryX(){
+		ensureProperties();
 		return Integer.valueOf((properties.getProperty(Const.Properties.WindowLastGeometryX.getPrString(), Const.Properties.WindowLastGeometryX.getDefault())));
 	}
 	
 	public static int getWindowLastGeomteryY(){
+		ensureProperties();
 		return Integer.valueOf((properties.getProperty(Const.Properties.WindowLastGeometryY.getPrString(), Const.Properties.WindowLastGeometryY.getDefault())));
 	}
 
 	public static int getWindowLastGeomteryWidth(){
+		ensureProperties();
 		return Integer.valueOf((properties.getProperty(Const.Properties.WindowLastGeometryWidth.getPrString(), Const.Properties.WindowLastGeometryWidth.getDefault())));
 	}
 
 	public static int getWindowLastGeomteryHeight(){
+		ensureProperties();
 		return Integer.valueOf((properties.getProperty(Const.Properties.WindowLastGeometryHeight.getPrString(), Const.Properties.WindowLastGeometryHeight.getDefault())));
 	}
 
 	public static String getShutDownCommand(){
+		ensureProperties();
 		return properties.getProperty(Const.Properties.ShutDownCommand.getPrString(), Const.Properties.ShutDownCommand.getDefault());
 	}
 	
 	public static void setShutDownCommand(String sdc){
+		ensureProperties();
 		properties.setProperty(Const.Properties.ShutDownCommand.getPrString(), sdc);
 		saveProperties();
 	}
