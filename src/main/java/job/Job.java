@@ -208,19 +208,15 @@ public class Job extends JobObject implements Cloneable {
 	 * @return File The file with the destination path.
 	 */
 	private static Path replacePath(Path srcFile, Path srcPath, Path dstPath) {
+		return resolvePairedPath(srcFile, srcPath, dstPath);
+	}
 
-		// get actual path
-		String path = srcFile.toAbsolutePath().toString();
-		// delete source path from actual path
-		String cut = path.substring(srcPath.toAbsolutePath().toString().length(), path.length());
-
-		if (!cut.startsWith(File.separator)) {
-			cut = File.separator + cut;
-		}
-		// add destination path with remaining actual path
-		String newPath = dstPath.toAbsolutePath().toString() + cut;
-
-		return new File(newPath).toPath();
+	private static Path resolvePairedPath(Path sourceFile, Path sourceRoot, Path destinationRoot) {
+		Path normalizedSource = sourceFile.toAbsolutePath().normalize();
+		Path normalizedRoot = sourceRoot.toAbsolutePath().normalize();
+		Path normalizedDestinationRoot = destinationRoot.toAbsolutePath().normalize();
+		Path relativePath = normalizedRoot.relativize(normalizedSource);
+		return normalizedDestinationRoot.resolve(relativePath).normalize();
 	}
 
 	/**
@@ -638,10 +634,10 @@ public class Job extends JobObject implements Cloneable {
 
 		if ((ab && !deletionAnalysis) || (!ab && deletionAnalysis)){
 			fA = p.toFile();
-			fB = replacePath(p, pathA, pathB).toFile();
+			fB = resolvePairedPath(p, pathA, pathB).toFile();
 		}else if ((!ab && !deletionAnalysis) || (ab && deletionAnalysis)){
 			fB = p.toFile();
-			fA = replacePath(p, pathB, pathA).toFile();
+			fA = resolvePairedPath(p, pathB, pathA).toFile();
 		}
 		
 		

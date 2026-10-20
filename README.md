@@ -34,3 +34,11 @@ Bugs:
      (please visit: http://www.dirsyncpro.org/donate.html)
 
 Thank you for using DirSync Pro!
+
+
+
+## ROADMAP IDEAS
+
+1. update to latest jdk / jre
+2. clean up dead code
+3. use new java constructs / data structures for efficiency
