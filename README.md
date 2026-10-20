@@ -65,3 +65,4 @@ Thank you for using DirSync Pro!
 3. use new java constructs / data structures for efficiency
 4. add a formatter
 5. compile issues / linting / deprecations
+6. can we optimize the size of the executable

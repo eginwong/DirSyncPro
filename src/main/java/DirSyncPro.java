@@ -69,6 +69,7 @@ public class DirSyncPro {
 
 	private static String homePath = "";
 	private static boolean homePathSet = false; 
+	private static boolean propertyWarningShown = false;
 
 	private static String[] parseOptions(String[] args) {
 
@@ -554,10 +555,13 @@ public class DirSyncPro {
 					}else {
 						//log.printMinimal("Current directory is not wriable to store the property file!", Const.IconKey.Warning);
 						//log.printMinimal("You may set another paths in the options window.", Const.IconKey.Warning);
-						displayWarning(
-								"Folder regarding 'dirsyncpro.home' parameter (if defined), program folder, user home\n" +
-								"directory and current directory are not writable to store the DirSync Pro property file.\n" +
-								"Program options could not be saved. You may set another paths in the options window.");
+						if (!propertyWarningShown) {
+							displayWarning(
+									"Folder regarding 'dirsyncpro.home' parameter (if defined), program folder, user home\n" +
+									"directory and current directory are not writable to store the DirSync Pro property file.\n" +
+									"Program options could not be saved. You may set another paths in the options window.");
+							propertyWarningShown = true;
+						}
 					}
 				}
 			}

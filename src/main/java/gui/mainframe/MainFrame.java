@@ -135,6 +135,7 @@ public class MainFrame extends MainFrameObjects {
 	protected File currentConfig; // for open/save dialog
 	
 	private boolean currentConfigAlreadyAccessed = false;
+	private boolean scheduleEngineUiEnabled = false;
 	
 	private Updater u;
 
@@ -142,6 +143,8 @@ public class MainFrame extends MainFrameObjects {
 	protected boolean isUpdateDirFromGui = true;
 
 	public MainFrame() {
+        setScheduleEngineUiEnabled(false);
+
         // always select the last row (the created dummy job)
         jobsTree.setSelectionRow(jobsTree.getRowCount()-1);
 
@@ -603,6 +606,53 @@ public class MainFrame extends MainFrameObjects {
 		Component[] components = panel.getComponents();   
 		for (int i = 0; i < components.length; i++) {   
 			components[i].setEnabled(enabled);
+		}
+	}
+
+	protected void toggleScheduleEngineUi() {
+		setScheduleEngineUiEnabled(!scheduleEngineUiEnabled);
+	}
+
+	private void setScheduleEngineUiEnabled(boolean enabled) {
+		scheduleEngineUiEnabled = enabled;
+		if (scheduleStartButton != null) {
+			scheduleStartButton.setVisible(enabled);
+		}
+		if (scheduleStopButton != null) {
+			scheduleStopButton.setVisible(enabled);
+		}
+		if (jSeparator6 != null) {
+			jSeparator6.setVisible(enabled);
+		}
+		if (startScheduledTasksMenuItem != null) {
+			startScheduledTasksMenuItem.setVisible(enabled);
+		}
+		if (stopScheduledTasksMenuItem != null) {
+			stopScheduledTasksMenuItem.setVisible(enabled);
+		}
+		if (scheduleMenuSeparator != null) {
+			scheduleMenuSeparator.setVisible(enabled);
+		}
+		if (enableScheduleEngineMenuItem != null) {
+			enableScheduleEngineMenuItem.setText(enabled ? "Disable Schedule Engine" : "Enable Schedule Engine");
+		}
+
+		int scheduleTabIndex = -1;
+		for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+			if ("Schedules".equals(tabbedPane.getTitleAt(i))) {
+				scheduleTabIndex = i;
+				break;
+			}
+		}
+		if (enabled) {
+			if (scheduleTabIndex < 0) {
+				tabbedPane.addTab("Schedules", scheduleQJPanel);
+			}
+		} else if (scheduleTabIndex >= 0) {
+			if (tabbedPane.getSelectedIndex() == scheduleTabIndex) {
+				tabbedPane.setSelectedIndex(Math.max(0, scheduleTabIndex - 1));
+			}
+			tabbedPane.removeTabAt(scheduleTabIndex);
 		}
 	}
 	

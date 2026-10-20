@@ -45,7 +45,7 @@ import dirsyncpro.tools.GuiTools;
  * @author F. Gerbig, O. Givi (info@dirsyncpro.org)
  */
 public abstract class MainFrameObjects extends javax.swing.JFrame {
-    
+
     public MainFrameObjects() {
 		super();
 		GuiTools.setSystemLookAndFeel(DirSyncPro.isSystemLookAndFeel());
@@ -77,10 +77,9 @@ public abstract class MainFrameObjects extends javax.swing.JFrame {
         javax.swing.JSeparator jSeparator3 = new javax.swing.JSeparator();
         scheduleStartButton = new javax.swing.JButton();
         scheduleStopButton = new javax.swing.JButton();
-        javax.swing.JSeparator jSeparator6 = new javax.swing.JSeparator();
+        jSeparator6 = new javax.swing.JSeparator();
         javax.swing.JButton aboutButton = new javax.swing.JButton();
         javax.swing.JButton contentsButton = new javax.swing.JButton();
-        javax.swing.JButton donateButton = new javax.swing.JButton();
         javax.swing.JPanel mainPanel = new javax.swing.JPanel();
         tabbedPane = new javax.swing.JTabbedPane();
         javax.swing.JPanel jobsJPanel = new javax.swing.JPanel();
@@ -202,7 +201,7 @@ public abstract class MainFrameObjects extends javax.swing.JFrame {
         jLabel35 = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
         syncQTable = new javax.swing.JTable();
-        javax.swing.JPanel scheduleQJPanel = new javax.swing.JPanel();
+        scheduleQJPanel = new javax.swing.JPanel();
         scheduleStatusJPanel = new javax.swing.JPanel();
         scheduleEngineStatusField = new javax.swing.JLabel();
         spacer3 = new javax.swing.JPanel();
@@ -255,7 +254,7 @@ public abstract class MainFrameObjects extends javax.swing.JFrame {
         pauseMenuItem = new javax.swing.JMenuItem();
         stopMenuItem = new javax.swing.JMenuItem();
         shutDownMenuItem = new javax.swing.JMenuItem();
-        jSeparator5 = new javax.swing.JSeparator();
+        scheduleMenuSeparator = new javax.swing.JSeparator();
         startScheduledTasksMenuItem = new javax.swing.JMenuItem();
         stopScheduledTasksMenuItem = new javax.swing.JMenuItem();
         toolsMenu = new javax.swing.JMenu();
@@ -264,7 +263,6 @@ public abstract class MainFrameObjects extends javax.swing.JFrame {
         optionsMenuItem = new javax.swing.JMenuItem();
         javax.swing.JMenu helpMenu = new javax.swing.JMenu();
         javax.swing.JMenuItem contentsMenuItem = new javax.swing.JMenuItem();
-        javax.swing.JMenuItem donateMenuItem = new javax.swing.JMenuItem();
         javax.swing.JSeparator jSeparator1 = new javax.swing.JSeparator();
         javax.swing.JMenuItem updateMenuItem = new javax.swing.JMenuItem();
         javax.swing.JMenuItem aboutMenuItem = new javax.swing.JMenuItem();
@@ -477,7 +475,6 @@ public abstract class MainFrameObjects extends javax.swing.JFrame {
                 aboutButtonaboutActionPerformed(evt);
             }
         });
-        toolBar.add(aboutButton);
 
         contentsButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/buttonContents.png"))); // NOI18N
         contentsButton.setToolTipText("Help contents");
@@ -492,22 +489,6 @@ public abstract class MainFrameObjects extends javax.swing.JFrame {
             }
         });
         toolBar.add(contentsButton);
-
-        donateButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/donate22x22.png"))); // NOI18N
-        donateButton.setToolTipText("<html>If this program is good for your purpose please consider a donation, <br />any amount you would like, as a gesture to encourage us developing this program.<br />Click this button to go to the SourceForge donation page.<br /><br />Thank you!</html>");
-        donateButton.setBorderPainted(false);
-        donateButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        donateButton.setMaximumSize(new java.awt.Dimension(30, 30));
-        donateButton.setMinimumSize(new java.awt.Dimension(30, 30));
-        donateButton.setOpaque(false);
-        donateButton.setPreferredSize(new java.awt.Dimension(30, 30));
-        donateButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        donateButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                donateButtoncontentsActionPerformed(evt);
-            }
-        });
-        toolBar.add(donateButton);
 
         getContentPane().add(toolBar, java.awt.BorderLayout.NORTH);
 
@@ -2055,7 +2036,7 @@ public abstract class MainFrameObjects extends javax.swing.JFrame {
             }
         });
         runMenu.add(shutDownMenuItem);
-        runMenu.add(jSeparator5);
+        runMenu.add(scheduleMenuSeparator);
 
         startScheduledTasksMenuItem.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/startSchedule.png"))); // NOI18N
         startScheduledTasksMenuItem.setText("Start Schedule Engine");
@@ -2120,15 +2101,14 @@ public abstract class MainFrameObjects extends javax.swing.JFrame {
         });
         helpMenu.add(contentsMenuItem);
 
-        donateMenuItem.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/donate16x16.png"))); // NOI18N
-        donateMenuItem.setText("Make a donation!");
-        donateMenuItem.setToolTipText("<html>If this program is good for your purpose please consider a donation <br />as less as you would like as a gesture to encourage us developing this program.<br />Click this menu item to go to the SourceForge donation page.<br /><br />Thank you!</html>");
-        donateMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        enableScheduleEngineMenuItem = new javax.swing.JMenuItem();
+        enableScheduleEngineMenuItem.setText("Enable Schedule Engine");
+        enableScheduleEngineMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                donateMenuItemcontentsActionPerformed(evt);
+                toggleScheduleEngineUi();
             }
         });
-        helpMenu.add(donateMenuItem);
+        helpMenu.add(enableScheduleEngineMenuItem);
         helpMenu.add(jSeparator1);
 
         updateMenuItem.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/update16x16.png"))); // NOI18N
@@ -2537,7 +2517,6 @@ private void updateMenuItemaboutActionPerformed(java.awt.event.ActionEvent evt) 
     private javax.swing.JScrollPane jScrollPane5;
     private javax.swing.JScrollPane jScrollPane6;
     private javax.swing.JSeparator jSeparator4;
-    private javax.swing.JSeparator jSeparator5;
     private javax.swing.JPopupMenu.Separator jSeparator7;
     private javax.swing.JTabbedPane jTabbedPane1;
     protected javax.swing.JButton jobAddButton;
@@ -2579,6 +2558,8 @@ private void updateMenuItemaboutActionPerformed(java.awt.event.ActionEvent evt) 
     protected javax.swing.JMenuItem saveMenuItem;
     protected javax.swing.JLabel scheduleEngineStatusField;
     protected javax.swing.JButton scheduleStartButton;
+    protected javax.swing.JPanel scheduleQJPanel;
+    protected javax.swing.JSeparator jSeparator6;
     private javax.swing.JPanel scheduleStatusJPanel;
     protected javax.swing.JButton scheduleStopButton;
     protected javax.swing.JTable scheduleTable;
@@ -2588,6 +2569,7 @@ private void updateMenuItemaboutActionPerformed(java.awt.event.ActionEvent evt) 
     private javax.swing.JPanel spacer6;
     private javax.swing.JPanel spacer7;
     protected javax.swing.JMenuItem startScheduledTasksMenuItem;
+    protected javax.swing.JSeparator scheduleMenuSeparator;
     private javax.swing.JButton stopButton;
     private javax.swing.JMenuItem stopMenuItem;
     protected javax.swing.JMenuItem stopScheduledTasksMenuItem;
@@ -2666,8 +2648,11 @@ private void updateMenuItemaboutActionPerformed(java.awt.event.ActionEvent evt) 
     private javax.swing.JPanel viewJPanel;
     private javax.swing.JPanel viewJPanel1;
     private javax.swing.JPanel viewJPanel2;
+    protected javax.swing.JMenuItem enableScheduleEngineMenuItem;
     // End of variables declaration//GEN-END:variables
     
+    abstract protected void toggleScheduleEngineUi();
+
     abstract protected void about();
     abstract protected void addJob();
     abstract protected void analyzeStart();
