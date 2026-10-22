@@ -61,15 +61,23 @@ find src/main/java src/test/java -name '*.java' > /tmp/dsp-sources.txt
 | 1500 files | +807 ms (+61.1%) | materially slower |
 
 ### Current benchmark baseline for the next experiment
-The current state before the second experiment is the fresh run captured immediately before this change.
+The successful second experiment added a paired-path cache and an early exit for the identical-size/date case in [src/main/java/job/Job.java](src/main/java/job/Job.java). This is the fresh baseline that should be used for the next optimization pass.
 
 | Dataset | Average | Min | Max | Queue size |
 |---|---:|---:|---:|---:|
-| 100 files | 120 ms | 39 ms | 388 ms | 134 |
-| 500 files | 129 ms | 110 ms | 151 ms | 660 |
-| 1500 files | 360 ms | 281 ms | 458 ms | 1952 |
+| 100 files | 77 ms | 18 ms | 269 ms | 134 |
+| 500 files | 77 ms | 63 ms | 99 ms | 660 |
+| 1500 files | 177 ms | 152 ms | 203 ms | 1952 |
+
+### Comparison of the successful second experiment
+
+| Dataset | Delta vs. pre-experiment baseline | Notes |
+|---|---:|---|
+| 100 files | -43 ms (-35.8%) | clear win, lower average and lower max |
+| 500 files | -52 ms (-40.3%) | meaningful improvement |
+| 1500 files | -183 ms (-50.8%) | strongest improvement in the large-tree case |
 
 ### Conclusion
-The first optimization pass in [src/main/java/job/Job.java](src/main/java/job/Job.java) was not a net win under these synthetic workloads. The tree walk still performs the same number of expensive per-file comparisons, and the benchmark shows the main cost is in pair analysis rather than repeated filter calls alone.
+The first optimization pass in [src/main/java/job/Job.java](src/main/java/job/Job.java) was not a net win, but the second experiment was. The paired-path cache reduces repeated absolute-path remapping work, and the early return for identical file size/date avoids building a `SyncPair` for the common no-op case. The gains are most visible in the larger dataset, which is exactly where the hot path matters most.
 
-This means the next optimization should target the hot path deeper: reducing redundant per-file comparison work, avoiding repeated expensive metadata and path-replacement checks, and pruning comparison branches before they create full SyncPair objects.
+The next optimization should still focus on deeper traversal reduction, since the current win is real but modest compared with the larger savings available from collapsing repeated full-tree passes.

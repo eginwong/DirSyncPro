@@ -115,14 +115,15 @@ Why it did not help:
 This tells us the next change should target the deeper hot path instead of the filter call count alone.
 
 ### Experiment 2: reduce per-file path remapping overhead
-The next experiment targets the expensive per-item path remapping inside `analyzeFilePair()`. The method previously rebuilt paired paths by substringing absolute paths for every visited file. The new approach resolves the relative path once and then appends it to the opposite root.
+This experiment targeted the expensive per-item path remapping inside `analyzeFilePair()`. The method previously rebuilt paired paths by substringing absolute paths for every visited file. The new approach resolves the relative path once and then appends it to the opposite root, and it also short-circuits the common identical-size/date no-op case before creating a full `SyncPair`.
 
-Why this is a realistic next step:
+Why this was a realistic next step:
 - it preserves the same sync semantics,
 - it avoids repeated absolute-path string operations in the hottest loop,
-- it reduces object churn and string work without altering file matching logic.
+- it reduces object churn and string work without altering file matching logic,
+- it catches a common fast-path before deeper comparison logic runs.
 
-This change is intentionally smaller and safer than a full traversal rewrite, so it is a good candidate for the next benchmarked experiment.
+Status: kept. This experiment produced a clear improvement in the benchmark and did not require reverting.
 
 ### Phase 1: Measure and benchmark the current behavior
 1. Add a benchmark harness around `Job.analyze()` with a synthetic directory tree of different sizes.

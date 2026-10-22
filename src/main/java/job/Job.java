@@ -74,6 +74,8 @@ import dirsyncpro.tools.WildcardTools;
  */
 
 public class Job extends JobObject implements Cloneable {
+	private final HashMap<String, Path> pairedPathCache = new HashMap<>();
+
 	/**
 	 * Initializes a new Directory.
 	 */
@@ -217,6 +219,23 @@ public class Job extends JobObject implements Cloneable {
 		Path normalizedDestinationRoot = destinationRoot.toAbsolutePath().normalize();
 		Path relativePath = normalizedRoot.relativize(normalizedSource);
 		return normalizedDestinationRoot.resolve(relativePath).normalize();
+	}
+
+	private Path resolvePairedPathCached(Path sourceFile, Path sourceRoot, Path destinationRoot) {
+		String cacheKey = sourceRoot.toAbsolutePath().normalize().toString() + "|" +
+				destinationRoot.toAbsolutePath().normalize().toString() + "|" +
+				sourceFile.toAbsolutePath().normalize().toString();
+		Path cached = pairedPathCache.get(cacheKey);
+		if (cached != null) {
+			return cached;
+		}
+		Path resolved = resolvePairedPath(sourceFile, sourceRoot, destinationRoot);
+		pairedPathCache.put(cacheKey, resolved);
+		return resolved;
+	}
+
+	private void resetPairedPathCache() {
+		pairedPathCache.clear();
 	}
 
 	/**
@@ -363,6 +382,10 @@ public class Job extends JobObject implements Cloneable {
 		fASize = (fAEx ? fA.length(): 0);
 		fBSize = (fBEx ? fB.length(): 0);
 		
+		if (fAEx && fBEx && !fAIsDir && !fBIsDir && getSyncCompareMode() == Const.CompareMode.CompareFileSizesDates && fASize == fBSize && fADate == fBDate) {
+			return null;
+		}
+
 		if (deletionAnalysis){
 			getLog().printExcessive("Deletion analysis info A: " + fA.getAbsolutePath() + " [" + (fAEx ? "exists" : "does not exist") + (fAIsDir ? ", dir" : ", file") + "]", IconKey.Info);
 			getLog().printExcessive("Deletion analysis info B: " + fB.getAbsolutePath() + " [" + (fBEx ? "exists" : "does not exist") + (fBIsDir ? ", dir" : ", file") + "]", IconKey.Info);
@@ -634,10 +657,10 @@ public class Job extends JobObject implements Cloneable {
 
 		if ((ab && !deletionAnalysis) || (!ab && deletionAnalysis)){
 			fA = p.toFile();
-			fB = resolvePairedPath(p, pathA, pathB).toFile();
+			fB = resolvePairedPathCached(p, pathA, pathB).toFile();
 		}else if ((!ab && !deletionAnalysis) || (ab && deletionAnalysis)){
 			fB = p.toFile();
-			fA = resolvePairedPath(p, pathB, pathA).toFile();
+			fA = resolvePairedPathCached(p, pathB, pathA).toFile();
 		}
 		
 		
@@ -658,6 +681,7 @@ public class Job extends JobObject implements Cloneable {
 
 		pathA = new File(dirA).toPath();
 		pathB = new File(dirB).toPath();
+		resetPairedPathCache();
 		DSPFileVisitor dspFileVistor = new DSPFileVisitor(filterSet, ab);
 
 		int maxDepth = (isRecursive() ? Integer.MAX_VALUE : 1);
