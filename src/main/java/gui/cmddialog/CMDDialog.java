@@ -136,7 +136,7 @@ public class CMDDialog extends CMDDialogObjects {
 			if (s.contains(" ")){
 				s = "\"" + s + "\"";
 			}
-			command += s + " -Xmx512M -jar ";
+			command += s + " -Xmx1G -jar ";
 			s = path + "dirsyncpro.jar";
 			if (s.contains(" ")){
 				s = "\"" + s + "\"";

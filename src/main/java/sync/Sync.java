@@ -725,10 +725,10 @@ public class Sync{
 	private void outOfMemoryError(OutOfMemoryError e){
 		if (log != null) {
 			log.printMinimal("Out of memory error occured; the program will write debug info to the global log file (if enabled) and exit.", IconKey.Error);
-			log.printMinimal("Java (JRE) may have been started with low memroy.\n", IconKey.Error);
+			log.printMinimal("Java (JRE) may have been started with low memory.\n", IconKey.Error);
 			log.printMinimal("Please restart DirSync Pro using the DirSyncPro.exe executable (MS \n", IconKey.Error);
-			log.printMinimal("Windows) or by using -Xmx512M flag (java -Xmx512M -jar dirsyncpro.jar)\n", IconKey.Error);
-			log.printMinimal("to allocate more memroy for DirSync Pro.\n\n", IconKey.Error);
+			log.printMinimal("Windows) or by using -Xmx1G flag (java -Xmx1G -jar dirsyncpro.jar)\n", IconKey.Error);
+			log.printMinimal("to allocate more memory for DirSync Pro.\n\n", IconKey.Error);
 			log.printMinimal("*** DEBUG INFORMATION START ***", IconKey.Error);
 			log.printMinimal("OS:      " + System.getProperty("os.name") + " on " + System.getProperty("os.arch"), IconKey.Error);
 			log.printMinimal("JAVA:    " + System.getProperty("java.vendor") + " Version " + System.getProperty("java.version") + " Class-Version "	+ System.getProperty("java.class.version"), IconKey.Error);
@@ -751,10 +751,10 @@ public class Sync{
 			if (DirSyncPro.isGuiMode()) {
 				DirSyncPro.displayError(
 						"Out of memory Error!\n\n" + 
-						"Java (JRE) may have been started with low memroy.\n" +
+						"Java (JRE) may have been started with low memory.\n" +
 						"Please restart DirSync Pro using the DirSyncPro.exe executable (MS \n" +
-						"Windows) or by using -Xmx512M flag (java -Xmx512M -jar dirsyncpro.jar)\n" +
-						"to allocate more memroy for DirSync Pro.\n\n" +
+						"Windows) or by using -Xmx1G flag (java -Xmx1G -jar dirsyncpro.jar)\n" +
+						"to allocate more memory for DirSync Pro.\n\n" +
 						"If this problem keeps happening, please try to reproduce the error and to\n" +
 						"find out which specific action triggers it; then send a description of\n" +
 						"this error and the debug information to: " + Const.EMAIL + 

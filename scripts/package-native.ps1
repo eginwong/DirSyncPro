@@ -60,4 +60,4 @@ jpackage `
   --icon src\main\resources\icons\dirsyncpro_multi_16_22_32_40_48_64.ico `
   --win-shortcut `
   --win-menu `
-  --java-options "-Xmx512m"
+  --java-options "-Xmx1g"

@@ -586,7 +586,7 @@
                 <Property name="columns" type="int" value="20"/>
                 <Property name="editable" type="boolean" value="false"/>
                 <Property name="rows" type="int" value="1"/>
-                <Property name="text" type="java.lang.String" value=" java -Xmx512M -jar dirsyncpro.jar"/>
+                <Property name="text" type="java.lang.String" value=" java -Xmx1G -jar dirsyncpro.jar"/>
               </Properties>
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_VariableModifier" type="java.lang.Integer" value="4"/>

@@ -390,7 +390,7 @@ public abstract class CMDDialogObjects extends javax.swing.JDialog {
         cmdCommandField.setColumns(20);
         cmdCommandField.setEditable(false);
         cmdCommandField.setRows(1);
-        cmdCommandField.setText(" java -Xmx512M -jar dirsyncpro.jar");
+        cmdCommandField.setText(" java -Xmx1G -jar dirsyncpro.jar");
         cmdCommandFieldJScrollPane.setViewportView(cmdCommandField);
 
         gridBagConstraints = new java.awt.GridBagConstraints();

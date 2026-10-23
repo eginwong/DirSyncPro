@@ -58,4 +58,4 @@ jpackage \
   --vendor "DirSyncPro" \
   --icon src/main/resources/icons/DirSyncPro.png \
   --resource-dir src/main/resources \
-  --java-options "-Xmx512m"
+  --java-options "-Xmx1g"
