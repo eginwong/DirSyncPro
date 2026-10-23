@@ -56,8 +56,6 @@ Bugs:
 
 Thank you for using DirSync Pro!
 
-
-
 ## ROADMAP IDEAS
 
 1. update to latest jdk / jre
@@ -65,4 +63,6 @@ Thank you for using DirSync Pro!
 3. use new java constructs / data structures for efficiency
 4. add a formatter
 5. compile issues / linting / deprecations
-6. can we optimize the size of the executable
+6. continue optimization
+7. can we optimize the size of the executable
+8. can we remove or clean up any unused icons in resources
