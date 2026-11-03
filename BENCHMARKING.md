@@ -77,6 +77,51 @@ The successful second experiment added a paired-path cache and an early exit for
 | 500 files | -52 ms (-40.3%) | meaningful improvement |
 | 1500 files | -183 ms (-50.8%) | strongest improvement in the large-tree case |
 
+### Rejected metadata-cache experiment
+A later experiment cached basic file metadata during a single `Job.analyze()` pass. The full suite remained green, but the benchmark did not produce a reliable improvement and the 1500-file case regressed materially.
+
+| Dataset | Average after metadata cache | Delta vs. current baseline |
+|---|---:|---:|
+| 100 files | 83 ms | +6 ms (+7.8%) |
+| 500 files | 81 ms | +4 ms (+5.2%) |
+| 1500 files | 570 ms | +393 ms (+222.0%) |
+
+The experiment was reverted. The result reinforces that metadata caching is secondary to reducing the number of traversal and pair-analysis passes.
+
+### Rejected direct-byte checksum experiment
+A direct buffered byte comparison replaced CRC-based content equality. A dedicated 1 MB benchmark measured:
+
+| Comparison case | CRC implementation | Direct byte implementation | Result |
+|---|---:|---:|---|
+| Equal files | 0 ms average | 3 ms average | Direct was slower |
+| Unequal files | 0 ms average | 4 ms average | Direct was slower |
+
+The full suite and real-file equality regression pass, but the helper benchmark showed no benefit and the direct implementation was reverted. CRC behavior remains the implementation baseline.
+
+### Lazy SyncQ invalidation experiment
+Added dirty flags so sync/view filtered lists are rebuilt only after queue mutation or filter-mode changes. Focused add/delete/view tests now pass and the full suite remains green.
+
+The existing sync-analyzer benchmark showed no meaningful queue-related speedup; its same queue counts were:
+
+| Dataset | Baseline average | Queue-invalidated average | Delta |
+|---|---:|---:|---:|
+| 100 files | 77 ms | 95 ms | +18 ms (+23.4%) |
+| 500 files | 77 ms | 100 ms | +23 ms (+29.9%) |
+| 1500 files | 177 ms | 198 ms | +21 ms (+11.9%) |
+
+The analyzer harness does not exercise the UI queue-filtering workflow. These results are treated as environmental/no-net-analyzer-impact evidence, while the experiment is retained for filtered-list correctness and mutation invalidation.
+
+### Rejected indexed-mirror traversal experiment
+A pair-aware mirror index was used to compare source and target entries after building one index for each side. The full suite passed, but the benchmark improvement was not repeatable or meaningful.
+
+| Dataset | Baseline average | Indexed average | Delta |
+|---|---:|---:|---:|
+| 100 files | 77 ms | 82 ms | +5 ms (+6.5%) |
+| 500 files | 77 ms | 75 ms | -2 ms (-2.6%) |
+| 1500 files | 177 ms | 176 ms | -1 ms (-0.6%) |
+
+The queue sizes remained unchanged at 134, 660, and 1952. The experiment was reverted because the small 500/1500 gains were within noise and the implementation added substantial traversal/index complexity.
+
 ### Conclusion
 The first optimization pass in [src/main/java/job/Job.java](src/main/java/job/Job.java) was not a net win, but the second experiment was. The paired-path cache reduces repeated absolute-path remapping work, and the early return for identical file size/date avoids building a `SyncPair` for the common no-op case. The gains are most visible in the larger dataset, which is exactly where the hot path matters most.
 

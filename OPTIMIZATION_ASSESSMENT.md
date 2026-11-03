@@ -7,161 +7,140 @@ This review focuses on the sync analysis path, especially the traversal and comp
 The current implementation is correct for a straightforward file-by-file mirror, but there are a few clear opportunities to reduce repeated work and make the sync algorithm more efficient without changing behavior.
 
 The biggest optimization opportunities are:
-- avoid repeating full directory scans when one sync pass can answer both the comparison and deletion questions;
-- avoid re-evaluating filter logic for the same path repeatedly during a traversal;
-- avoid repeatedly rebuilding filtered queue views on UI state changes; and
-- reduce expensive per-file comparison work by doing the most expensive checks only after cheaper checks already indicate a difference.
+- avoiding repeated full directory scans when one sync pass can answer both comparison and deletion questions,
+- reducing repeated comparison work in the hottest file-pair path,
+- avoiding repeated filter checks during traversal,
+- and reducing repeated queue filtering in the UI layer.
 
-## High-impact findings
+This assessment is organized by finding, with the corresponding experiments listed directly under each finding.
 
-### 1) The analyzer is doing multiple full tree walks for a single job
+## Progress at a glance
+- ✅ Kept: paired-path caching and the identical-size/date early exit in [src/main/java/job/Job.java](src/main/java/job/Job.java).
+- ❎ Rejected: local filter boolean hoisting, filter-result memoization, and per-analysis file metadata caching.
+- ⏳ Not attempted: index-based traversal consolidation, lazy queue filtering, comparison-decision refactoring, and legacy utility cleanup.
+
+There is no current unintentional revert of the successful paired-path optimization; it is present in the current source and remains the implemented optimization.
+
+## 1. Finding: the analyzer does multiple full tree walks for a single job
+What it is:
 In [src/main/java/job/Job.java](src/main/java/job/Job.java), `generateSyncQ()` performs a deletion walk and a comparison walk. In bidirectional modes, `analyze()` calls `generateSyncQ()` twice, once for each direction.
 
-That means the algorithm can perform up to:
-- 2 full passes for a single-direction mirror; and
-- 4 full passes for a bidirectional sync.
-
-For large trees, this is the strongest candidate for optimization.
-
-Why this matters:
+Why it matters:
 - every file and directory is visited multiple times;
 - file metadata is repeatedly queried;
 - the queue is repeatedly populated with items that may already be known to be redundant or identical;
 - the cost compounds as tree size grows.
 
-Suggested improvement:
-- build a single in-memory index of each side of the sync (relative path, file type, size, mod time, and normalized filter state);
-- compare the two indexes once and derive both copy actions and deletion actions from that index;
-- keep the current logic as a fallback if a full rewrite is too risky, but move toward a single-pass index-based algorithm as the main path.
+Experiments attempted for this finding:
+- ❎ Rejected: a pair-aware in-memory index for unidirectional mirror modes. Benchmark averages were 82/75/176 ms for 100/500/1500 files versus 77/77/177 ms baseline; the queue remained unchanged and the small large-tree gain did not justify the implementation complexity, so it was reverted.
+- Not attempted yet: build a production index that replaces repeated deletion and comparison work without changing filter or conflict semantics.
+- Kept separately: paired-path caching and the identical-size/date early exit belong to the per-file hot path under Finding 3, not to traversal consolidation.
 
-### 2) Filter checks are repeated on every file and directory
+Status: highest-priority optimization target.
+
+## 2. ❎ Finding: filter checks are repeated on every file and directory
+What it is:
 In the nested visitor class in [src/main/java/job/Job.java](src/main/java/job/Job.java), `visitFile()` and `preVisitDirectory()` repeatedly call:
 - `filters.matchesAnyIncludeFilter(...)`
 - `filters.matchesAnyExcludeFilter(...)`
 
-This is a repeated cost for every visited path, even if the filter result is stable for the same relative path or subtree.
+Why it matters:
+- filter logic is evaluated for every visited path,
+- the same pattern checks happen repeatedly even in the default wildcard case,
+- this adds overhead in the walk even if it is not the largest cost.
 
-This is especially worth optimizing because:
-- filters are often evaluated with string/pattern matching against relative paths;
-- the same directory tree can be traversed repeatedly during analysis;
-- the cost is not just the pattern check itself; it also scales with the number of configured filters.
+Experiments attempted for this finding:
+- ❎ Rejected and benchmarked: a local boolean hoist before `analyzeFilePair()` avoided duplicate filter evaluations but did not produce a consistent win.
+- ❎ Rejected and benchmarked: per-path memoization for include/exclude decisions did not produce a consistent medium/large-workload win.
+- ❎ Added temporarily, then reverted without benchmark evidence: a `FilterSet` include/exclude cache. The follow-up benchmark run stalled, so this implementation was not retained or counted as measured progress.
 
-Suggested improvement:
-- cache filter decisions by normalized relative path;
-- cache subtree inclusion decisions for directories so excluded subtrees are pruned earlier;
-- avoid re-evaluating filters against the same file more than once per analyze pass.
+Status: rejected as a primary optimization target.
 
-### 3) Sync queue filtering reconstructs lists repeatedly
+## 3. ✅ Finding: path remapping and duplicate no-op comparisons add avoidable overhead
+What it is:
+The per-file logic in `analyzeFilePair()` rebuilds paired paths for every visited file and continues into deeper comparison logic even when two files are obviously identical.
+
+Why it matters:
+- repeated absolute-path rebuilding adds overhead in the hottest loop;
+- same-size/same-date no-op cases are common enough to matter;
+- avoiding unnecessary file-pair processing helps especially in larger trees.
+
+Experiments attempted for this finding:
+- Kept: paired-path caching so the relative-path calculation is reused during a single analysis pass.
+- Kept: early return for identical files in the default compare mode when size and timestamp match.
+- Result: benchmark improved materially, especially in the larger scenarios: average runtime changed from 405/580/1319 ms to 77/77/177 ms for 100/500/1500 files, respectively.
+- Related rejected experiment: per-analysis caching of basic file metadata. It regressed the 1500-file case from 177 ms to 570 ms and was reverted.
+
+Status: paired-path and no-op optimizations are kept; metadata caching is rejected.
+
+## 4. Finding: queue filtering is secondary to the analysis bottleneck
+What it is:
 The queue logic in [src/main/java/sync/SyncQ.java](src/main/java/sync/SyncQ.java) rebuilds filtered lists via `viewFilter()` and `syncFilter()` by iterating over the full queue each time.
 
-This has a few problems:
+Why it matters:
 - if the UI toggles filters often, the same queue is scanned repeatedly;
-- it re-evaluates the full set of items even when only one category changed;
-- filtering is O(n) and is called repeatedly, which makes the UI and analysis feel slower on large sync sets.
+- this is more of a view-layer cost than the main sync-analysis bottleneck;
+- it is still worth improving, but not before the larger traversal cost is addressed.
 
-Suggested improvement:
-- compute filtered lists lazily and only invalidate the cache when the underlying queue changes;
-- avoid scanning the full queue to rebuild the view unless the queue actually changed;
-- optionally maintain bucketed lists by status to remove repeated scan loops.
+Experiments attempted for this finding:
+- Kept for correctness: lazy dirty-state invalidation for view and sync filtered lists, with rebuilds triggered after add/delete/status/append/filter-mode changes.
+- Added: focused `SyncQ` add/delete/view regressions reproducing stale cached-list behavior.
+- Benchmark impact: the sync analyzer showed no consistent speedup; the harness does not directly measure UI queue filtering. The queue remained stable at 134/660/1952 entries.
+- Not attempted yet: bucketed lists or delta-based category buckets.
 
-### 4) Expensive checks are triggered in a broad set of cases
-In `analyzeSyncPairStatus()` in [src/main/java/job/Job.java](src/main/java/job/Job.java), the code always compares dates and sizes first, and then does more expensive operations when needed.
+Status: cache correctness improvement kept; category bucketing remains unattempted.
 
-This part is mostly well-structured, but there are still opportunities to optimize the path for large files:
-- checksum comparison is only done under `CompareFileContents`, but it is still a heavy operation and should be gated behind a quick pre-check that is as cheap as possible;
-- metadata comparison is done only when the compare mode is metadata-aware, but it should be batched with a single pass where possible instead of repeated file reads across many entries;
-- the algorithm currently handles many mode branches in one long method, which makes it harder to reason about where the cost is spent and to optimize selectively.
+## 5. Finding: the comparison decision tree is long and mode-heavy
+What it is:
+`analyzeSyncPairStatus()` in [src/main/java/job/Job.java](src/main/java/job/Job.java) contains a broad set of branches for different sync modes and compare modes.
 
-Suggested improvement:
-- use early exits and cheap comparisons first;
-- only do content or metadata comparisons when the date and size heuristics indicate a likely mismatch;
-- split the logic into smaller status-specific helpers so expensive branches are easier to profile and optimize.
+Why it matters:
+- the decision tree is hard to reason about and profile;
+- it mixes business rules, comparison logic, and file metadata reads in one long method;
+- that makes deeper optimization harder to do safely.
 
-## Medium-impact cleanup areas
+Experiments attempted for this finding:
+- ❎ Rejected: caching basic file metadata within a single `Job.analyze()` pass, tested separately from the traversal experiment. It passed the full test suite but benchmarked worse at all three dataset sizes and was reverted.
+- ❎ Rejected: direct buffered byte comparison in place of CRC equality. A dedicated 1 MB benchmark measured 3 ms equal/4 ms unequal versus 0 ms for CRC; it was reverted, though the real-file behavior regression remains.
+- Not attempted yet: split the status logic into helpers such as `isNewFile`, `isDeletedFile`, `isModifiedFile`, `isLargerFile`, and `isConflict`.
+- Not attempted yet: keep cheap checks first and restrict checksum or metadata comparison to the cases where they are truly needed.
 
-### 5) There is legacy utility code that looks unneeded in the hot path
-[src/main/java/tools/FileLister.java](src/main/java/tools/FileLister.java) is a recursive file enumerator with a `main` method, but it does not appear to be part of the core sync loop or a central optimization strategy.
+Status: metadata caching is rejected; decision-tree refactoring remains an unattempted follow-up.
 
-This is not necessarily a performance bug, but it is a good candidate for trimming if it is no longer used, because:
+## 6. Finding: legacy utility code is not the main performance issue
+What it is:
+[src/main/java/tools/FileLister.java](src/main/java/tools/FileLister.java) is a recursive file enumerator with a `main` method, but it does not appear to be part of the core sync loop or central optimization path.
+
+Why it matters:
 - it adds maintenance burden;
-- it suggests older implementation patterns; and
-- it is easy to confuse with the real sync algorithm when analyzing the codebase.
+- it suggests older implementation patterns;
+- it is easy to confuse with the real sync algorithm when reviewing the codebase.
 
-Suggested improvement:
-- confirm whether it is still referenced anywhere; if not, remove it or move it to a test-only utility area.
+Experiments attempted for this finding:
+- Completed: confirmed there were no workspace references to `FileLister` and removed the standalone demo class from `src/main/java/tools/FileLister.java`.
 
-### 6) Long decision tree in one method is harder to optimize safely
-`analyzeSyncPairStatus()` is long and contains many mode-specific branches. This makes the code harder to profile and refactor because the business rules are mixed with traversal and comparison logic.
+Status: completed cleanup; no sync-path behavior or performance impact.
 
-Suggested improvement:
-- extract status classification into helper methods such as:
-  - `isNewFile`
-  - `isDeletedFile`
-  - `isModifiedFile`
-  - `isLargerFile`
-  - `isConflict`
-- preserve the current semantics first, then optimize each helper independently.
+## Experiment log summary
+Status legend:
+- Kept: implemented and benchmarked successfully
+- Rejected: implemented and benchmarked, then reverted
+- Not attempted yet: identified but not implemented
 
-## Practical optimization plan
-
-### Rejected experiment: filter-result micro-optimization
-A first optimization pass attempted to reduce duplicate include/exclude filter checks inside the visitor by assigning local boolean values before triggering `analyzeFilePair()`. This did not produce a measurable net win under the synthetic benchmark and was therefore reverted.
-
-Why it did not help:
-- the benchmark cost is dominated by pair-analysis work once files are visited,
-- the tree walk still performs the same number of expensive comparisons,
-- caching a few filter calls does not reduce the larger cost of repeated metadata and status logic for each file.
-
-This tells us the next change should target the deeper hot path instead of the filter call count alone.
-
-### Experiment 2: reduce per-file path remapping overhead
-This experiment targeted the expensive per-item path remapping inside `analyzeFilePair()`. The method previously rebuilt paired paths by substringing absolute paths for every visited file. The new approach resolves the relative path once and then appends it to the opposite root, and it also short-circuits the common identical-size/date no-op case before creating a full `SyncPair`.
-
-Why this was a realistic next step:
-- it preserves the same sync semantics,
-- it avoids repeated absolute-path string operations in the hottest loop,
-- it reduces object churn and string work without altering file matching logic,
-- it catches a common fast-path before deeper comparison logic runs.
-
-Status: kept. This experiment produced a clear improvement in the benchmark and did not require reverting.
-
-### Phase 1: Measure and benchmark the current behavior
-1. Add a benchmark harness around `Job.analyze()` with a synthetic directory tree of different sizes.
-2. Capture timings for:
-   - small tree,
-   - medium tree,
-   - large tree,
-   - recursive vs. non-recursive,
-   - several compare modes.
-3. Record the total number of visited files and directories and compare to the expected work.
-
-### Phase 2: Consolidate traversal work
-1. Replace repeated full scans with a single job-level index for each side.
-2. Build a map keyed by relative path.
-3. Use that index to derive copy, delete, and conflict actions.
-4. Keep the current tree visitor as a compatibility layer while benchmarking the new approach.
-
-### Phase 3: Cache repeated filter decisions
-1. Add a cache for include/exclude filter decisions by relative path.
-2. Cache directory prune decisions so excluded subtrees are skipped immediately.
-3. Store the filter outcome once per file/directory instead of recalculating during each pass.
-
-### Phase 4: Reduce queue cost
-1. Make `SyncQ` view/sync filters lazy and cacheable.
-2. Add a delta-based invalidation model instead of rebuilding all filtered lists every time.
-3. If necessary, maintain category buckets for `new`, `modified`, `larger`, `redundant`, and `conflict` entries.
-
-### Phase 5: Protect expensive comparison work
-1. Keep cheap checks first (size, date, type, existence).
-2. Restrict checksum and metadata comparison to cases where the cheap checks already show probable differences.
-3. Keep a consistent path for all compare modes so the algorithm is predictable and easier to test.
-
-## Likely ROI order
-1. Consolidate full-tree scans into one index-based pass: highest impact.
-2. Cache filter decisions during traversal: high impact with low risk.
-3. Make SyncQ filtering lazy: medium impact and straightforward improvement.
-4. Refactor long status methods: medium impact, low-to-medium risk.
-5. Remove unused legacy utility code: low impact, cleanup only.
+1. Kept: paired-path cache + identical-file fast path
+2. ❎ Rejected: local filter boolean hoist
+3. ❎ Rejected: per-path filter memoization
+4. ❎ Rejected: per-analysis basic file metadata cache
+5. ❎ Reverted without usable benchmark evidence: transient `FilterSet` include/exclude cache
+6. ❎ Rejected: pair-aware mirror traversal index; effectively flat benchmark
+7. ❎ Rejected: direct-byte checksum comparison; slower than CRC in dedicated benchmark
+8. Kept for correctness: lazy SyncQ filtered-list invalidation
+9. Not attempted yet: production traversal-index consolidation with stronger risk controls
+10. Not attempted yet: bucketed queue views by status
+11. Not attempted yet: refactor comparison decision tree into smaller helpers
+12. Completed: removed unreferenced `FileLister` standalone demo utility
 
 ## Recommendation
-If the goal is to improve sync performance with minimal change risk, the best next step is to tackle the duplicate tree traversal first and then add filter caching. Those two changes address the most expensive repeated work in the current design and give the clearest return on investment.
+The highest remaining ROI is still avoiding repeated analysis work in the sync hot path, particularly traversal consolidation. The first index-based mirror experiment was rejected because the benchmark improvement was effectively flat. The path-remapping optimization remains kept; queued filtering and comparison refactoring should remain lower priority until a traversal design provides a measurable gain.
+
+This keeps the assessment aligned with the actual evidence and avoids mixing phases, experiments, and findings in ways that do not reflect the work performed.

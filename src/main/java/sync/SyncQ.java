@@ -43,6 +43,8 @@ public class SyncQ{
 	private HashMap<CopyMode, Boolean> syncFilterMode;
 	private boolean syncFiltered;
 	private boolean viewFiltered;
+	private boolean syncFilterDirty;
+	private boolean viewFilterDirty;
 	
 	private int totalAnalyzedFiles;
 	private int totalAnalyzedDirs;
@@ -99,6 +101,7 @@ public class SyncQ{
 	}
 	
 	public int size(){
+		ensureSyncFilter();
 		if (syncFiltered){
 			return syncQSyncFiltered.size();
 		}else{
@@ -107,6 +110,7 @@ public class SyncQ{
 	}
 	
 	public SyncPair get(int i){
+		ensureSyncFilter();
 		if (syncFiltered){
 			return syncQSyncFiltered.get(i);
 		}else{
@@ -115,6 +119,7 @@ public class SyncQ{
 	}
 	
 	public SyncPair getFilteredView(int i){
+		ensureViewFilter();
 		if (viewFiltered){
 			return syncQViewFiltered.get(i);
 		}else{
@@ -123,6 +128,7 @@ public class SyncQ{
 	}
 
 	public int viewSize(){
+		ensureViewFilter();
 		if (viewFiltered){
 			return syncQViewFiltered.size();
 		}else{
@@ -130,7 +136,25 @@ public class SyncQ{
 		}
 	}
 	
+	private void ensureViewFilter(){
+		if (viewFilterDirty){
+			viewFilter();
+		}
+	}
+
+	private void ensureSyncFilter(){
+		if (syncFilterDirty){
+			syncFilter();
+		}
+	}
+
+	private void invalidateFilteredQueues(){
+		viewFilterDirty = true;
+		syncFilterDirty = true;
+	}
+
 	public void viewFilter(){
+		viewFilterDirty = false;
 		if (
 				getSyncQViewFilterMode(CopyMode.New) && 
 				getSyncQViewFilterMode(CopyMode.Modified) && 
@@ -164,9 +188,11 @@ public class SyncQ{
 		syncFilterMode.put (CopyMode.DeleteFiles, dspSyncQ.getSyncQSyncFilterMode(CopyMode.DeleteFiles));
 		syncFilterMode.put (CopyMode.DeleteDirs, dspSyncQ.getSyncQSyncFilterMode(CopyMode.DeleteDirs));
 		syncFilterMode.put (CopyMode.ConflictFiles, dspSyncQ.getSyncQSyncFilterMode(CopyMode.ConflictFiles));
+		invalidateFilteredQueues();
 	}
 	
 	public void syncFilter(){
+		syncFilterDirty = false;
 		if (
 				getSyncQSyncFilterMode(CopyMode.New) && 
 				getSyncQSyncFilterMode(CopyMode.Modified) && 
@@ -201,6 +227,7 @@ public class SyncQ{
 				i--;
 			}
 		}
+		invalidateFilteredQueues();
 			
 		if (
 				getSyncQSyncFilterMode(CopyMode.New) && 
@@ -240,11 +267,13 @@ public class SyncQ{
 				i--;
 			}
 		}
+		invalidateFilteredQueues();
 	}
 	
 	public boolean add(SyncPair sp){
 		recalculateStats(sp, +1);
 		updated = true;
+		invalidateFilteredQueues();
 		return syncQ.add(sp);
 	}
 
@@ -366,6 +395,7 @@ public class SyncQ{
 		sp.setSyncPairStatus(spsTo);
 		recalculateStats(sp, 1);
 		updated = true;
+		invalidateFilteredQueues();
 	}
 	
 	public boolean appendToSyncQ(SyncQ sq){
@@ -385,6 +415,7 @@ public class SyncQ{
 		this.countForcedCopyDirs += sq.getCountForcedCopyDirs();
 
 		updated = true;
+		invalidateFilteredQueues();
 		return syncQ.addAll(sq.syncQ);
 	}
 	
@@ -537,6 +568,7 @@ public class SyncQ{
 	 */
 	public void setSyncQViewFilterMode(CopyMode cm, boolean b){
 		viewFilterMode.put(cm, b);
+		viewFilterDirty = true;
 	}
 
 	/**
@@ -555,6 +587,7 @@ public class SyncQ{
 	 */
 	public void setSyncQSyncFilterMode(CopyMode cm, boolean b){
 		syncFilterMode.put(cm, b);
+		syncFilterDirty = true;
 	}
 
 	/**
@@ -587,6 +620,7 @@ public class SyncQ{
 		recalculateStats(sp, -1);
 		updated = true;
 		syncQ.remove(sp);
+		invalidateFilteredQueues();
 	}
 
 	public int getTotalAnalyzedFiles() {

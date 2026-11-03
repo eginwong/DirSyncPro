@@ -58,7 +58,7 @@ Thank you for using DirSync Pro!
 
 ## ROADMAP IDEAS
 
-1. update to latest jdk / jre
+1. jdk 17 -> 21
 2. clean up dead code
 3. use new java constructs / data structures for efficiency
 4. add a formatter

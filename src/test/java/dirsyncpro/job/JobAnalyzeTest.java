@@ -130,6 +130,54 @@ class JobAnalyzeTest {
     }
 
     @Test
+    void mirrorModeHandlesMixedNestedChangesInOneAnalysis() throws Exception {
+        Path sourceRoot = tempDir.resolve("source");
+        Path targetRoot = tempDir.resolve("target");
+        Files.createDirectories(sourceRoot.resolve("shared-nested"));
+        Files.createDirectories(targetRoot.resolve("shared-nested"));
+
+        Path newFile = Files.writeString(sourceRoot.resolve("new.txt"), "new");
+        Path modifiedSource = Files.writeString(sourceRoot.resolve("shared-nested").resolve("modified.txt"), "new content");
+        Path modifiedTarget = Files.writeString(targetRoot.resolve("shared-nested").resolve("modified.txt"), "old content");
+        Path orphanFile = Files.writeString(targetRoot.resolve("orphan.txt"), "obsolete");
+
+        Files.setLastModifiedTime(modifiedSource, FileTime.fromMillis(System.currentTimeMillis()));
+        Files.setLastModifiedTime(modifiedTarget, FileTime.fromMillis(System.currentTimeMillis() - 10_000L));
+
+        Job job = new Job(true);
+        job.setName("mixed-mirror");
+        job.setSrc(sourceRoot.toString());
+        job.setDst(targetRoot.toString());
+        job.setSyncMode(Const.SyncMode.ABMirror);
+
+        job.analyze();
+
+        assertEquals(3, DirSyncPro.getSync().getSyncQ().size());
+        boolean sawNew = false;
+        boolean sawModified = false;
+        boolean sawOrphan = false;
+        for (int i = 0; i < DirSyncPro.getSync().getSyncQ().size(); i++) {
+            SyncPair pair = DirSyncPro.getSync().getSyncQ().get(i);
+            if (pair.getFileA().equals(newFile.toFile())
+                    && pair.getSyncPairStatus() == Const.SyncPairStatus.FileAIsNew) {
+                sawNew = true;
+            }
+            if (pair.getFileA().equals(modifiedSource.toFile())
+                    && pair.getFileB().equals(modifiedTarget.toFile())
+                    && pair.getSyncPairStatus() == Const.SyncPairStatus.FileAIsModified) {
+                sawModified = true;
+            }
+            if (pair.getFileB().equals(orphanFile.toFile())
+                    && pair.getSyncPairStatus() == Const.SyncPairStatus.FileBIsRedundant) {
+                sawOrphan = true;
+            }
+        }
+        assertEquals(true, sawNew);
+        assertEquals(true, sawModified);
+        assertEquals(true, sawOrphan);
+    }
+
+    @Test
     void recursiveJobAnalysisVisitsNestedDirectoriesAndSkipsTheRootFolders() throws Exception {
         Path sourceRoot = tempDir.resolve("source");
         Path targetRoot = tempDir.resolve("target");

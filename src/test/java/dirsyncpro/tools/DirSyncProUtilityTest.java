@@ -2,12 +2,17 @@ package dirsyncpro.tools;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class DirSyncProUtilityTest {
 
@@ -94,6 +99,18 @@ class DirSyncProUtilityTest {
         assertEquals("1.0 KB", TextFormatTool.getHumanReadable(1024));
         assertEquals("1.5 KB", TextFormatTool.getHumanReadable(1536));
         assertEquals("1.0 MB", TextFormatTool.getHumanReadable(1_048_576));
+    }
+
+    @Test
+    void checksumIdenticalMatchesEqualFilesAndDetectsDifferences(@TempDir Path tempDir) throws Exception {
+        Path first = Files.writeString(tempDir.resolve("first.bin"), "same content with extra bytes");
+        Path second = Files.writeString(tempDir.resolve("second.bin"), "same content with extra bytes");
+        Path different = Files.writeString(tempDir.resolve("different.bin"), "different content at byte one");
+        Path shorter = Files.writeString(tempDir.resolve("shorter.bin"), "same");
+
+        assertTrue(FileTools.checksumIdentical(first.toFile(), second.toFile()));
+        assertFalse(FileTools.checksumIdentical(first.toFile(), different.toFile()));
+        assertFalse(FileTools.checksumIdentical(first.toFile(), shorter.toFile()));
     }
 
     @Test
