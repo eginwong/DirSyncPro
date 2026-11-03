@@ -676,6 +676,101 @@ public class Job extends JobObject implements Cloneable {
 		}
 	}
 	
+	private static class TreeIndexEntry {
+		final Path path;
+		final boolean excluded;
+
+		TreeIndexEntry(Path path, boolean excluded) {
+			this.path = path;
+			this.excluded = excluded;
+		}
+	}
+
+	private HashMap<String, TreeIndexEntry> buildTreeIndex(Path root, boolean countAnalyzed) throws IOException {
+		HashMap<String, TreeIndexEntry> index = new HashMap<>();
+		Path normalizedRoot = root.toAbsolutePath().normalize();
+		int maxDepth = (isRecursive() ? Integer.MAX_VALUE : 1);
+
+		Files.walkFileTree(root, (getSymLinkMode() == SymLinkMode.FollowSymLinks ? EnumSet.of(FileVisitOption.FOLLOW_LINKS) : EnumSet.noneOf(FileVisitOption.class)), maxDepth,
+			new SimpleFileVisitor<Path>() {
+				int depth = -1;
+
+				@Override
+				public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+					depth++;
+					if (DirSyncPro.getSync().isStopping()) {
+						return FileVisitResult.TERMINATE;
+					}
+					if (depth == 0) {
+						return FileVisitResult.CONTINUE;
+					}
+					if (!filterSet.matchesAnyIncludeFilter(dir)) {
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+					boolean excluded = filterSet.matchesAnyExcludeFilter(dir);
+					if (countAnalyzed && !excluded) {
+						DirSyncPro.getSync().getSyncQ().addTotalAnalyzedDirs(1);
+					}
+					Path absolute = dir.toAbsolutePath().normalize();
+					String relative = normalizedRoot.relativize(absolute).toString();
+					index.put(relative, new TreeIndexEntry(absolute, excluded));
+					return excluded ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+					if (DirSyncPro.getSync().isStopping()) {
+						return FileVisitResult.TERMINATE;
+					}
+					if (filterSet.matchesAnyIncludeFilter(file)) {
+						boolean excluded = filterSet.matchesAnyExcludeFilter(file);
+						if (countAnalyzed && !excluded) {
+							DirSyncPro.getSync().getSyncQ().addTotalAnalyzedFiles(1);
+						}
+						Path absolute = file.toAbsolutePath().normalize();
+						String relative = normalizedRoot.relativize(absolute).toString();
+						index.put(relative, new TreeIndexEntry(absolute, excluded));
+					}
+					return FileVisitResult.CONTINUE;
+				}
+			});
+		return index;
+	}
+
+	private void generateIndexedMirrorSyncQ(Path pA, Path pB, boolean ab) {
+		pathA = new File(dirA).toPath();
+		pathB = new File(dirB).toPath();
+		resetPairedPathCache();
+
+		try {
+			Path sourceRoot = ab ? pA : pB;
+			Path targetRoot = ab ? pB : pA;
+			HashMap<String, TreeIndexEntry> sourceIndex = buildTreeIndex(sourceRoot, true);
+			boolean deletionAnalysis = (isDelFiles() || isDelDirs());
+			HashMap<String, TreeIndexEntry> targetIndex = buildTreeIndex(targetRoot, deletionAnalysis);
+
+			for (TreeIndexEntry entry : sourceIndex.values()) {
+				analyzeFilePair(entry.path, ab, false, entry.excluded);
+				if (DirSyncPro.getSync().isStopping()) {
+					return;
+				}
+			}
+
+			if (isDelFiles() || isDelDirs()) {
+				for (HashMap.Entry<String, TreeIndexEntry> entry : targetIndex.entrySet()) {
+					if (!sourceIndex.containsKey(entry.getKey())) {
+						analyzeFilePair(entry.getValue().path, ab, true, entry.getValue().excluded);
+						if (DirSyncPro.getSync().isStopping()) {
+							return;
+						}
+					}
+				}
+			}
+		} catch (IOException exc) {
+			getLog().printMinimal("Unable to analyze: " + this.name + " (" + exc.getMessage() + ")", IconKey.Error);
+		}
+	}
+
 	private void generateSyncQ(Path pA, Path pB, boolean ab){
 		// calculate number of steps
 
@@ -754,9 +849,13 @@ public class Job extends JobObject implements Cloneable {
 			getLog().printMinimal(" Directory B: '" + fB.getAbsolutePath() + "' isn't a directory!", IconKey.Error);
 			throw new IncompleteConfigurationException();
 		}
-		if (syncMode == SyncMode.ABMirror || syncMode == SyncMode.ABFull || syncMode == SyncMode.ABContribute || syncMode == SyncMode.ABCustom){
+		if (syncMode == SyncMode.ABMirror){
+			generateIndexedMirrorSyncQ(fA.toPath(), fB.toPath(), true);
+		}else if (syncMode == SyncMode.BAMirror){
+			generateIndexedMirrorSyncQ(fA.toPath(), fB.toPath(), false);
+		}else if (syncMode == SyncMode.ABFull || syncMode == SyncMode.ABContribute || syncMode == SyncMode.ABCustom){
 			generateSyncQ(fA.toPath(), fB.toPath(), true);
-		}else if (syncMode == SyncMode.BAMirror || syncMode == SyncMode.BAFull || syncMode == SyncMode.BAContribute || syncMode == SyncMode.BACustom){
+		}else if (syncMode == SyncMode.BAFull || syncMode == SyncMode.BAContribute || syncMode == SyncMode.BACustom){
 			generateSyncQ(fA.toPath(), fB.toPath(), false);
 		}else if (syncMode.isBI()){
 			generateSyncQ(fA.toPath(), fB.toPath(), true);

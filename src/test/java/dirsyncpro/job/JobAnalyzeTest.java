@@ -178,6 +178,42 @@ class JobAnalyzeTest {
     }
 
     @Test
+    void reverseMirrorDetectsFilesAndDeletesThemFromSource() throws Exception {
+        Path sourceRoot = tempDir.resolve("source");
+        Path targetRoot = tempDir.resolve("target");
+        Files.createDirectories(sourceRoot);
+        Files.createDirectories(targetRoot);
+
+        Path newInTarget = Files.writeString(targetRoot.resolve("new.txt"), "new from B");
+        Path obsoleteInSource = Files.writeString(sourceRoot.resolve("obsolete.txt"), "obsolete in A");
+
+        Job job = new Job(true);
+        job.setName("reverse-mirror");
+        job.setSrc(sourceRoot.toString());
+        job.setDst(targetRoot.toString());
+        job.setSyncMode(Const.SyncMode.BAMirror);
+
+        job.analyze();
+
+        assertEquals(2, DirSyncPro.getSync().getSyncQ().size());
+        boolean sawNew = false;
+        boolean sawRedundant = false;
+        for (int i = 0; i < DirSyncPro.getSync().getSyncQ().size(); i++) {
+            SyncPair pair = DirSyncPro.getSync().getSyncQ().get(i);
+            if (pair.getFileB().equals(newInTarget.toFile())
+                    && pair.getSyncPairStatus() == Const.SyncPairStatus.FileBIsNew) {
+                sawNew = true;
+            }
+            if (pair.getFileA().equals(obsoleteInSource.toFile())
+                    && pair.getSyncPairStatus() == Const.SyncPairStatus.FileAIsRedundant) {
+                sawRedundant = true;
+            }
+        }
+        assertEquals(true, sawNew);
+        assertEquals(true, sawRedundant);
+    }
+
+    @Test
     void recursiveJobAnalysisVisitsNestedDirectoriesAndSkipsTheRootFolders() throws Exception {
         Path sourceRoot = tempDir.resolve("source");
         Path targetRoot = tempDir.resolve("target");

@@ -37,6 +37,35 @@ class SyncQTest {
     }
 
     @Test
+    void statusChangeMovesPairBetweenFilterCategories(@TempDir Path tempDir) throws Exception {
+        Path sourceFile = Files.writeString(tempDir.resolve("source.txt"), "source");
+        Path targetFile = Files.writeString(tempDir.resolve("target.txt"), "target");
+
+        Job job = new Job(true);
+        SyncPair pair = new SyncPair(
+                sourceFile.toFile(), targetFile.toFile(), true, true, false, false,
+                sourceFile.toFile().lastModified(), targetFile.toFile().lastModified(),
+                Files.size(sourceFile), Files.size(targetFile),
+                Const.SyncPairStatus.FileAIsNew, true, job);
+
+        SyncQ queue = new SyncQ();
+        queue.add(pair);
+        queue.setSyncQSyncFilterMode(CopyMode.New, true);
+        queue.setSyncQSyncFilterMode(CopyMode.Modified, false);
+        queue.syncFilter();
+        assertEquals(1, queue.size());
+
+        queue.change(pair, Const.SyncPairStatus.FileAIsModified);
+        queue.syncFilter();
+        assertEquals(0, queue.size());
+
+        queue.setSyncQSyncFilterMode(CopyMode.New, false);
+        queue.setSyncQSyncFilterMode(CopyMode.Modified, true);
+        queue.syncFilter();
+        assertEquals(1, queue.size());
+    }
+
+    @Test
     void filteredViewReflectsQueueMutation(@TempDir Path tempDir) throws Exception {
         Path sourceFile = Files.writeString(tempDir.resolve("source.txt"), "source");
         Path missingTarget = tempDir.resolve("target.txt");

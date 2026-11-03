@@ -111,8 +111,8 @@ The existing sync-analyzer benchmark showed no meaningful queue-related speedup;
 
 The analyzer harness does not exercise the UI queue-filtering workflow. These results are treated as environmental/no-net-analyzer-impact evidence, while the experiment is retained for filtered-list correctness and mutation invalidation.
 
-### Rejected indexed-mirror traversal experiment
-A pair-aware mirror index was used to compare source and target entries after building one index for each side. The full suite passed, but the benchmark improvement was not repeatable or meaningful.
+### Rejected early indexed-mirror traversal experiment
+A first pair-aware mirror index was used to compare source and target entries after building one index for each side. The full suite passed, but the benchmark improvement was not repeatable or meaningful.
 
 | Dataset | Baseline average | Indexed average | Delta |
 |---|---:|---:|---:|
@@ -120,7 +120,20 @@ A pair-aware mirror index was used to compare source and target entries after bu
 | 500 files | 77 ms | 75 ms | -2 ms (-2.6%) |
 | 1500 files | 177 ms | 176 ms | -1 ms (-0.6%) |
 
-The queue sizes remained unchanged at 134, 660, and 1952. The experiment was reverted because the small 500/1500 gains were within noise and the implementation added substantial traversal/index complexity.
+The queue sizes remained unchanged at 134, 660, and 1952. The experiment was reverted because the first implementation produced only a small 500/1500 gain and added traversal/index complexity.
+
+### Kept production traversal-index experiment
+The production index for `ABMirror` and `BAMirror` builds one relative-path index per root, compares source/target entries, and processes only target-only entries for deletion. It preserves exclusion flags and analyzed-file/dir counters.
+
+A controlled no-index run and final indexed run produced:
+
+| Dataset | No index | With index | Delta |
+|---|---:|---:|---:|
+| 100 files | 103 ms | 86 ms | -17 ms (-16.5%) |
+| 500 files | 94 ms | 81 ms | -13 ms (-13.8%) |
+| 1500 files | 238 ms | 191 ms | -47 ms (-19.7%) |
+
+Queue sizes remained unchanged at 134, 660, and 1952. Forward-mirror and reverse-mirror regressions pass, and the full Maven suite remains green. The implementation is kept for unidirectional mirror modes.
 
 ### Conclusion
 The first optimization pass in [src/main/java/job/Job.java](src/main/java/job/Job.java) was not a net win, but the second experiment was. The paired-path cache reduces repeated absolute-path remapping work, and the early return for identical file size/date avoids building a `SyncPair` for the common no-op case. The gains are most visible in the larger dataset, which is exactly where the hot path matters most.
