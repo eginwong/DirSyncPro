@@ -46,7 +46,6 @@ if (-not $jarFile) {
 
 Copy-Item "$($jarFile.FullName)" "$root\dist\staging\"
 Copy-Item -Recurse "$root\target\lib" "$root\dist\staging\"
-Copy-Item -Recurse "$root\src\main\resources" "$root\dist\staging\resources"
 
 jpackage `
   --type exe `
@@ -58,6 +57,7 @@ jpackage `
   --app-version $AppVersion `
   --vendor "DirSyncPro" `
   --icon src\main\resources\icons\dirsyncpro_multi_16_22_32_40_48_64.ico `
+  --add-modules java.base,java.desktop,java.management `
   --win-shortcut `
   --win-menu `
   --java-options "-Xmx1g"

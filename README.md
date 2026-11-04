@@ -11,8 +11,7 @@ How to run DirSync Pro:
 
 Building and packaging locally:
   Prerequisites:
-    - JDK 8 or newer (the project is compiled for Java 8, and newer JDKs such as
-      17 work well for local builds)
+    - JDK 17 or newer (the project is compiled and tested with Java 17)
     - Apache Maven 3.x installed and on your PATH
 
   From the project root, run the full test suite:
@@ -68,7 +67,6 @@ Thank you for using DirSync Pro!
 
 1. jdk 17 -> 21
 2. use new java constructs / data structures for efficiency
-3. add a formatter (configured with Spotless/Google Java Format)
 4. compile issues / linting / deprecations
 5. can we optimize the size of the executable
 6. can we remove or clean up any unused icons in resources

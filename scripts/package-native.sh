@@ -45,7 +45,6 @@ JAR_NAME="$(basename "$JAR_PATH")"
 
 cp "$JAR_PATH" dist/staging/
 cp -R target/lib dist/staging/
-cp -R src/main/resources dist/staging/resources
 
 jpackage \
   --type app-image \
@@ -56,6 +55,6 @@ jpackage \
   --dest dist/mac \
   --app-version "$APP_VERSION" \
   --vendor "DirSyncPro" \
-  --icon src/main/resources/icons/DirSyncPro.png \
-  --resource-dir src/main/resources \
+  --icon src/main/resources/icons/DirSyncPro.icns \
+  --add-modules java.base,java.desktop,java.management \
   --java-options "-Xmx1g"
