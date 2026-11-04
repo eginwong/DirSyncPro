@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v mvn >/dev/null 2>&1; then
+  echo "pre-commit: Maven is required to run the Java formatter." >&2
+  echo "Install Maven or run ./scripts/setup-git-hooks.sh after Maven is available." >&2
+  exit 1
+fi
+
+# Format Java sources, then stage formatting changes made to files being committed.
+formatted_files=$(mktemp)
+trap 'rm -f "$formatted_files"' EXIT
+
+git diff --cached --name-only --diff-filter=ACMR -z -- '*.java' > "$formatted_files"
+if [ ! -s "$formatted_files" ]; then
+  exit 0
+fi
+
+mvn -q spotless:apply
+
+while IFS= read -r -d '' file; do
+  if [ -f "$file" ]; then
+    git add -- "$file"
+  fi
+done < "$formatted_files"

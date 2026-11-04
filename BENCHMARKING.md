@@ -135,6 +135,23 @@ A controlled no-index run and final indexed run produced:
 
 Queue sizes remained unchanged at 134, 660, and 1952. Forward-mirror and reverse-mirror regressions pass, and the full Maven suite remains green. The implementation is kept for unidirectional mirror modes.
 
+### Rejected comparison-predicate helper refactor
+A helper-extraction refactor for modified/larger/larger-and-modified predicates passed all 19 tests but benchmarked at 178/218/365 ms for 100/500/1500 files, versus the existing no-refactor benchmark runs near 80/97/202 ms. The implementation was reverted because it added method overhead without reducing comparison work.
+
+### Rejected bucketed queue views
+A bucketed `SyncQ` implementation preserved add/delete/status-change behavior and passed all 19 tests. The existing ABMirror benchmark produced:
+
+| Dataset | No buckets | With buckets | Delta |
+|---|---:|---:|---:|
+| 100 files | 90 ms | 69 ms | -21 ms (-23.3%) |
+| 500 files | 87 ms | 81 ms | -6 ms (-6.9%) |
+| 1500 files | 180 ms | 187 ms | +7 ms (+3.9%) |
+
+Queue sizes remained unchanged. Because the large-tree result regressed and the analyzer harness does not exercise UI filtering workflows, the experiment is rejected and the implementation was reverted.
+
+### Rejected bidirectional/custom traversal expansion
+A staged implementation expanded indexed traversal beyond the kept unidirectional mirror modes. It produced 102/101/232 ms averages for 100/500/1500 files, compared with the existing 77/77/177 ms baseline. Queue sizes were unchanged, but the experiment was 32% slower at 100 files, 31% slower at 500 files, and 31% slower at 1500 files. The implementation was reverted and must not be restored without a controlled index/no-index comparison.
+
 ### Conclusion
 The first optimization pass in [src/main/java/job/Job.java](src/main/java/job/Job.java) was not a net win, but the second experiment was. The paired-path cache reduces repeated absolute-path remapping work, and the early return for identical file size/date avoids building a `SyncPair` for the common no-op case. The gains are most visible in the larger dataset, which is exactly where the hot path matters most.
 

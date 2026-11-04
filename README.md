@@ -30,6 +30,14 @@ Building and packaging locally:
   Run the built app directly with:
   java -jar target/dirSyncPro-0.1.jar
 
+  Optimization work and benchmark results are tracked in [OPTIMIZATION_ASSESSMENT.md](OPTIMIZATION_ASSESSMENT.md).
+
+  Java formatting:
+    - Run `mvn spotless:apply` to format Java sources manually.
+    - Run `mvn spotless:check` to verify formatting without changing files.
+    - Enable the repository pre-commit hook with `./scripts/setup-git-hooks.sh`.
+      The hook formats Java sources before a commit and re-stages the staged Java files.
+
   If you want to package a native desktop bundle on macOS, the project includes a
   helper script:
   ./scripts/package-native.sh
@@ -59,10 +67,8 @@ Thank you for using DirSync Pro!
 ## ROADMAP IDEAS
 
 1. jdk 17 -> 21
-2. clean up dead code
-3. use new java constructs / data structures for efficiency
-4. add a formatter
-5. compile issues / linting / deprecations
-6. continue optimization
-7. can we optimize the size of the executable
-8. can we remove or clean up any unused icons in resources
+2. use new java constructs / data structures for efficiency
+3. add a formatter (configured with Spotless/Google Java Format)
+4. compile issues / linting / deprecations
+5. can we optimize the size of the executable
+6. can we remove or clean up any unused icons in resources

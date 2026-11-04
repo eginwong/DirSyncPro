@@ -18,8 +18,9 @@ This assessment is organized by finding, with the corresponding experiments list
 - ✅ Kept: paired-path caching, identical-size/date early exits, and cheap gate ordering before checksum or metadata comparison in [src/main/java/job/Job.java](src/main/java/job/Job.java).
 - ❎ Rejected: local filter boolean hoisting, filter-result memoization, per-analysis metadata caching, and direct buffered-byte replacement for CRC comparison.
 - ✅ Kept: production relative-path indexes for unidirectional mirror analysis.
+- ❎ Rejected: relative-path traversal expansion into bidirectional/custom modes.
 - ✅ Kept: lazy queue filtering invalidation.
-- ⏳ Remaining: bucketed queue views, comparison-decision refactoring, and production traversal coverage for bidirectional/custom modes.
+- ⏳ Remaining: bucketed queue views and comparison-decision refactoring.
 
 There is no current unintentional revert of the successful paired-path optimization; it is present in the current source and remains the implemented optimization.
 
@@ -39,7 +40,7 @@ Experiments attempted for this finding:
 - Controlled benchmark: 103/94/238 ms without the production index versus 86/81/191 ms with it for 100/500/1500 files. Queue sizes remained 134/660/1952.
 - Added mixed forward-mirror and reverse-mirror regressions. The full suite passes, including exclusion/copy semantics inherited from the existing analyzer.
 
-Status: production unidirectional mirror optimization kept; bidirectional/custom traversal consolidation remains unattempted.
+Status: production unidirectional mirror optimization kept. The bidirectional/custom traversal expansion was rejected after the benchmark measured ~102/101/232 ms versus the 77/77/177 ms baseline, so this implementation must not be reapplied without new controlled benchmark evidence.
 
 ## 2. ❎ Finding: filter checks are repeated on every file and directory
 What it is:
@@ -89,9 +90,9 @@ Experiments attempted for this finding:
 - Kept for correctness: lazy dirty-state invalidation for view and sync filtered lists, with rebuilds triggered after add/delete/status/append/filter-mode changes.
 - Added: focused `SyncQ` add/delete/view regressions reproducing stale cached-list behavior.
 - Benchmark impact: the sync analyzer showed no consistent speedup; the harness does not directly measure UI queue filtering. The queue remained stable at 134/660/1952 entries.
-- Not attempted yet: bucketed lists or delta-based category buckets.
+- ❎ Rejected after implementation: bucketed lists by copy category; controlled benchmark showed mixed results, including a 1500-file regression, and the implementation was reverted.
 
-Status: cache correctness improvement kept; category bucketing remains unattempted.
+Status: cache correctness improvement kept; category bucketing is rejected until filtering workload evidence is collected from the UI.
 
 ## 5. Finding: the comparison decision tree is long and mode-heavy
 What it is:
@@ -105,11 +106,11 @@ Why it matters:
 Experiments attempted for this finding:
 - ❎ Rejected: caching basic file metadata within a single `Job.analyze()` pass, tested separately from the traversal experiment. It passed the full test suite but benchmarked worse at all three dataset sizes and was reverted.
 - ❎ Rejected: direct buffered byte comparison in place of CRC equality. A dedicated 1 MB benchmark measured 3 ms equal/4 ms unequal versus 0 ms for CRC; it was reverted, though the real-file behavior regression remains.
-- Not attempted yet: split the status logic into helpers such as `isNewFile`, `isDeletedFile`, `isModifiedFile`, `isLargerFile`, and `isConflict`.
+- ❎ Rejected: split the status predicates into helpers; the 19-test suite passed, but benchmark averages rose to 178/218/365 ms and were not kept.
 - ✅ Kept: cheap gates already precede expensive checks: CRC content comparison is reached only for equal-size files, and metadata comparison is reached only when the modification dates already match.
 - ❌ Rejected: a metadata-cache variant and direct buffered-byte replacement for CRC comparison were separately benchmarked and reverted; neither provided a reliable improvement, and direct bytes were slower in the dedicated 1 MB benchmark.
 
-Status: additional metadata caching and direct-byte comparison are rejected; decision-tree refactoring remains an unattempted follow-up.
+Status: metadata caching, direct-byte comparison, and helper-based comparison-predicate refactoring are rejected; the helper experiment passed tests but benchmarked materially slower and was reverted.
 
 ## ✅ 6. Finding: legacy utility code is not the main performance issue
 What it is:
@@ -140,11 +141,10 @@ Status legend:
 7. ❎ Rejected: direct-byte checksum comparison; slower than CRC in dedicated benchmark
 8. ✅ Kept for correctness: lazy SyncQ filtered-list invalidation
 9. ✅ Kept: production traversal index for `ABMirror` and `BAMirror`; controlled benchmark improved 100/500/1500 averages to 86/81/191 ms
-10. Not attempted yet: bucketed queue views by status
-11. Not attempted yet: refactor comparison decision tree into smaller helpers
-12. Completed: removed unreferenced `FileLister` standalone demo utility
+10. ❎ Rejected: indexed traversal expansion for `ABCustom`, `BACustom`, `BICustom`, and `BIMirror`; benchmarked at 102/101/232 ms versus the 77/77/177 ms baseline and reverted
+11. ❎ Rejected: bucketed queue views by status; controlled benchmark was 69/81/187 ms versus 90/87/180 ms, with mixed gains and a 1500-file regression
+12. ❎ Rejected: comparison-predicate helper extraction; 19 tests passed, benchmark averaged 178/218/365 ms and the change was reverted
+13. ✅ Completed: removed unreferenced `FileLister` standalone demo utility
 
 ## Recommendation
-The unidirectional mirror traversal index is now kept because it produced a consistent improvement against a fresh controlled no-index baseline while preserving the queue size. The next worthwhile work is extending the same index design to bidirectional/custom modes only after adding conflict-resolution and two-direction regressions. Queue bucketing and decision-tree refactoring remain lower priority.
-
-This keeps the assessment aligned with the actual evidence and avoids mixing phases, experiments, and findings in ways that do not reflect the work performed.
+The unidirectional mirror traversal index remains the only traversal optimization with controlled improvement. Bucketed queue views are rejected: the current benchmark showed mixed gains (69/81 ms at 100/500 files) but a 1500-file regression (187 ms versus 180 ms) and does not exercise UI filter workloads. The bidirectional/custom traversal expansion is also rejected. The remaining optimization opportunities are exhausted in this assessment: the comparison-predicate helper refactor was correctness-safe but benchmarked materially slower and was reverted. No further implementation experiment is recommended without new profiling evidence.
