@@ -44,7 +44,9 @@ fi
 JAR_NAME="$(basename "$JAR_PATH")"
 
 cp "$JAR_PATH" dist/staging/
-cp -R target/lib dist/staging/
+if [[ -d target/lib ]] && find target/lib -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
+  cp -R target/lib dist/staging/
+fi
 
 jpackage \
   --type app-image \

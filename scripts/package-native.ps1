@@ -45,7 +45,12 @@ if (-not $jarFile) {
 }
 
 Copy-Item "$($jarFile.FullName)" "$root\dist\staging\"
-Copy-Item -Recurse "$root\target\lib" "$root\dist\staging\"
+if (Test-Path "$root\target\lib") {
+    $runtimeDependencies = Get-ChildItem -Path "$root\target\lib" -File -ErrorAction SilentlyContinue
+    if ($runtimeDependencies.Count -gt 0) {
+        Copy-Item -Recurse "$root\target\lib" "$root\dist\staging\"
+    }
+}
 
 jpackage `
   --type exe `
