@@ -66,7 +66,3 @@ Thank you for using DirSync Pro!
 ## ROADMAP IDEAS
 
 1. jdk 17 -> 21
-2. use new java constructs / data structures for efficiency
-4. compile issues / linting / deprecations
-5. can we optimize the size of the executable
-6. can we remove or clean up any unused icons in resources

@@ -58,7 +58,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.Vector;
 
 /**
  * Represents a directory (source and destination) to be synchronized. Contains the source and
@@ -111,7 +110,7 @@ public class Job extends JobObject implements Cloneable {
     this.setSyncDirTimeStamps(false);
     this.setIgnoreDaylightSavingGranularity(false);
     this.setGranularity(0);
-    this.schedules = new Vector<Schedule>();
+    this.schedules = new ArrayList<Schedule>();
   }
 
   /**
@@ -1545,7 +1544,7 @@ public class Job extends JobObject implements Cloneable {
   /** Stops running listeners and start new if necessary */
   public void restartRealtimeListeners() {
     // final Job j1 = this;
-    // DirSyncPro.getSync().synchronize(new Vector<Job>(){{add(j1);}});
+    // DirSyncPro.getSync().synchronize(List.of(j1));
 
     stopRealtimeListeners();
     if (!enabled) return;
