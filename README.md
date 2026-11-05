@@ -11,7 +11,7 @@ How to run DirSync Pro:
 
 Building and packaging locally:
   Prerequisites:
-    - JDK 17 or newer (the project is compiled and tested with Java 17)
+    - JDK 21 or newer (the project is compiled and tested with Java 21)
     - Apache Maven 3.x installed and on your PATH
 
   From the project root, run the full test suite:
@@ -62,7 +62,3 @@ Bugs:
      (please visit: http://www.dirsyncpro.org/donate.html)
 
 Thank you for using DirSync Pro!
-
-## ROADMAP IDEAS
-
-1. jdk 17 -> 21
