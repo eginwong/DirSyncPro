@@ -186,26 +186,26 @@ public class FilterDialog extends FilterDialogObjects {
         filtersOwnerFilterField.setText(((FilterByFileOwnership) ft).getOwnerStr());
       } else if (byFilePermissions) {
         enableFilterTab(FilterTabs.ByFilePermission, true, true);
-        filtersPermissionFilterField.setText(
-            ((FilterByFilePermissions) ft).getOctalPermissionValue());
+        FilterByFilePermissions permissionFilter = (FilterByFilePermissions) ft;
+        filtersPermissionFilterField.setText(permissionFilter.getOctalPermissionValue());
         filtersPermissionFilterURCheckBox.setSelected(
-            ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OWNER_READ));
+            permissionFilter.isPermissionSet(PosixFilePermission.OWNER_READ));
         filtersPermissionFilterUWCheckBox.setSelected(
-            ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OWNER_WRITE));
+            permissionFilter.isPermissionSet(PosixFilePermission.OWNER_WRITE));
         filtersPermissionFilterUXCheckBox.setSelected(
-            ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OWNER_EXECUTE));
+            permissionFilter.isPermissionSet(PosixFilePermission.OWNER_EXECUTE));
         filtersPermissionFilterGRCheckBox.setSelected(
-            ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.GROUP_READ));
+            permissionFilter.isPermissionSet(PosixFilePermission.GROUP_READ));
         filtersPermissionFilterGWCheckBox.setSelected(
-            ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.GROUP_WRITE));
+            permissionFilter.isPermissionSet(PosixFilePermission.GROUP_WRITE));
         filtersPermissionFilterGXCheckBox.setSelected(
-            ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.GROUP_EXECUTE));
+            permissionFilter.isPermissionSet(PosixFilePermission.GROUP_EXECUTE));
         filtersPermissionFilterORCheckBox.setSelected(
-            ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OTHERS_READ));
+            permissionFilter.isPermissionSet(PosixFilePermission.OTHERS_READ));
         filtersPermissionFilterOWCheckBox.setSelected(
-            ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OTHERS_WRITE));
+            permissionFilter.isPermissionSet(PosixFilePermission.OTHERS_WRITE));
         filtersPermissionFilterOXCheckBox.setSelected(
-            ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OTHERS_EXECUTE));
+            permissionFilter.isPermissionSet(PosixFilePermission.OTHERS_EXECUTE));
       }
     } else {
       // add
@@ -491,23 +491,23 @@ public class FilterDialog extends FilterDialogObjects {
       ft.setOctalPermissionValue(filtersPermissionFilterField.getText());
     }
     filtersPermissionFilterURCheckBox.setSelected(
-        ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OWNER_READ));
+        ft.isPermissionSet(PosixFilePermission.OWNER_READ));
     filtersPermissionFilterUWCheckBox.setSelected(
-        ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OWNER_WRITE));
+        ft.isPermissionSet(PosixFilePermission.OWNER_WRITE));
     filtersPermissionFilterUXCheckBox.setSelected(
-        ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OWNER_EXECUTE));
+        ft.isPermissionSet(PosixFilePermission.OWNER_EXECUTE));
     filtersPermissionFilterGRCheckBox.setSelected(
-        ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.GROUP_READ));
+        ft.isPermissionSet(PosixFilePermission.GROUP_READ));
     filtersPermissionFilterGWCheckBox.setSelected(
-        ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.GROUP_WRITE));
+        ft.isPermissionSet(PosixFilePermission.GROUP_WRITE));
     filtersPermissionFilterGXCheckBox.setSelected(
-        ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.GROUP_EXECUTE));
+        ft.isPermissionSet(PosixFilePermission.GROUP_EXECUTE));
     filtersPermissionFilterORCheckBox.setSelected(
-        ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OTHERS_READ));
+        ft.isPermissionSet(PosixFilePermission.OTHERS_READ));
     filtersPermissionFilterOWCheckBox.setSelected(
-        ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OTHERS_WRITE));
+        ft.isPermissionSet(PosixFilePermission.OTHERS_WRITE));
     filtersPermissionFilterOXCheckBox.setSelected(
-        ((FilterByFilePermissions) ft).isPermissionSet(PosixFilePermission.OTHERS_EXECUTE));
+        ft.isPermissionSet(PosixFilePermission.OTHERS_EXECUTE));
   }
 
   public boolean isPatternRegularExpression() {

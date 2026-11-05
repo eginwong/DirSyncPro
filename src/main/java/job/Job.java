@@ -1553,7 +1553,7 @@ public class Job extends JobObject implements Cloneable {
     if (dirA.equals("") || dirB.equals("")) return;
 
     // initial syncronization
-    if (syncRealtimeOnStart) ScheduleEngine.getRealtimeInstance().scheduleRealtime((Job) this, 0);
+    if (syncRealtimeOnStart) ScheduleEngine.getRealtimeInstance().scheduleRealtime(this, 0);
 
     // Start DirA listener
     try {

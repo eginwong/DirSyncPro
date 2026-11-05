@@ -124,7 +124,7 @@ public class DirSyncPro {
         }
       }
     }
-    return (String[]) options.toArray(new String[options.size()]);
+    return options.toArray(new String[0]);
   }
 
   /**
@@ -851,7 +851,7 @@ public class DirSyncPro {
       toSave.remove(toSave.size() - 1);
     }
     toSave.add(0, file);
-    setLastLoadedConfigs((File[]) toSave.toArray(new File[toSave.size()]));
+    setLastLoadedConfigs(toSave.toArray(new File[0]));
   }
 
   public static File[] getLastLoadedConfigs() {
@@ -868,7 +868,7 @@ public class DirSyncPro {
         configFiles.add(f);
       }
     }
-    return (File[]) configFiles.toArray(new File[configFiles.size()]);
+    return configFiles.toArray(new File[0]);
   }
 
   private static void setLastLoadedConfigs(File[] configFiles) {
