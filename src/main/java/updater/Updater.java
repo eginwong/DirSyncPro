@@ -6,7 +6,6 @@ import java.awt.Desktop;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLConnection;
@@ -55,8 +54,6 @@ public class Updater {
 
       d.close();
 
-    } catch (MalformedURLException e) {
-      if (!inBackground) DirSyncPro.displayError("Update URL syntax error!");
     } catch (IllegalArgumentException e) {
       if (!inBackground) DirSyncPro.displayError("Update URL syntax error!");
     } catch (IOException e) {

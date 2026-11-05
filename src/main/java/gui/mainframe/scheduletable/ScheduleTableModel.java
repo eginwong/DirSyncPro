@@ -26,9 +26,8 @@ import java.text.SimpleDateFormat;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 
-@SuppressWarnings("serial")
 public class ScheduleTableModel extends AbstractTableModel {
-  // private static final long serialVersionUID = 45L;
+  private static final long serialVersionUID = 1L;
   private static final String[] columnNames = {"Type", "Job", "Next Event", "Details"};
 
   public ScheduleTableModel() {}

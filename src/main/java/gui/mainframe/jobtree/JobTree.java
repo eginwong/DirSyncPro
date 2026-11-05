@@ -29,6 +29,8 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeNode;
 
 public class JobTree extends DefaultMutableTreeNode {
+  private static final long serialVersionUID = 1L;
+
   public enum Type {
     Root("/icons/DirSyncPro.png"),
     Job("/icons/name.png"),

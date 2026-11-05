@@ -43,6 +43,7 @@ import javax.swing.JOptionPane;
  */
 // @SuppressWarnings("unused")
 public class CMDDialog extends CMDDialogObjects {
+  private static final long serialVersionUID = 1L;
 
   public CMDDialog(JFrame frame) {
     super(frame);

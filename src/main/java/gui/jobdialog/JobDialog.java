@@ -67,6 +67,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
  */
 // @SuppressWarnings("unused")
 public class JobDialog extends JobDialogObjects {
+  private static final long serialVersionUID = 1L;
 
   private static final int BASIC_TAB_NO = 0;
   private static final int COMPARE_TAB_NO = 1;
