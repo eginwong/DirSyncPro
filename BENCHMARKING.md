@@ -152,6 +152,27 @@ Queue sizes remained unchanged. Because the large-tree result regressed and the 
 ### Rejected bidirectional/custom traversal expansion
 A staged implementation expanded indexed traversal beyond the kept unidirectional mirror modes. It produced 102/101/232 ms averages for 100/500/1500 files, compared with the existing 77/77/177 ms baseline. Queue sizes were unchanged, but the experiment was 32% slower at 100 files, 31% slower at 500 files, and 31% slower at 1500 files. The implementation was reverted and must not be restored without a controlled index/no-index comparison.
 
+### Large-tree mirror strategy
+The relative-path index is retained below 10,000 entries because it showed a controlled 100/500/1500-file benefit. At or above that threshold, `ABMirror` and `BAMirror` use streaming traversal to avoid retaining every relative path, path wrapper, and index entry in memory.
+
+A local macOS filesystem comparison using 100,000 source files plus 100,000 target files produced:
+
+| Tree state | Current indexed implementation | Version 1.53 streaming |
+|---|---:|---:|
+| Matching size/date | 8.51 s | 8.78 s |
+| Modified source timestamps, three runs | 10.70 s average | 10.85 s average |
+
+The result showed no repeatable large-tree benefit from the full index. The benchmark runner now includes 10,000, 50,000, and 100,000-file scenarios. For 10,000+ files it uses three iterations; the 100,000-file scenario uses one iteration by default to limit harness runtime.
+
+### Threshold implementation benchmark results
+The updated benchmark runner was executed on macOS with Java 17 using the threshold implementation:
+
+| Dataset | Strategy | Average | Queue size |
+|---|---|---:|---:|
+| 10,000 files | Streaming | 1471 ms | 12,998 |
+| 50,000 files | Streaming | 8463 ms | 64,976 |
+| 100,000 files | Streaming | 18,492 ms | 129,948 |
+
 ### Conclusion
 The first optimization pass in [src/main/java/job/Job.java](src/main/java/job/Job.java) was not a net win, but the second experiment was. The paired-path cache reduces repeated absolute-path remapping work, and the early return for identical file size/date avoids building a `SyncPair` for the common no-op case. The gains are most visible in the larger dataset, which is exactly where the hot path matters most.
 

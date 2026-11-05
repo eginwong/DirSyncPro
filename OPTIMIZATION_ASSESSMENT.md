@@ -126,6 +126,30 @@ Experiments attempted for this finding:
 
 Status: completed cleanup; no sync-path behavior or performance impact.
 
+## ✅ 7. Finding: traversal indexes are not efficient for large mirror trees
+What it is:
+For `ABMirror` and `BAMirror`, the production implementation builds a relative-path index for both roots. This helped the controlled 100/500/1500-file benchmark, but retaining every path, wrapper object, and relative-path string is unnecessary when the tree is large.
+
+Why it matters:
+- every entry consumes heap while the index remains live;
+- HashMap construction and iteration add CPU and allocation work;
+- filesystem metadata cannot skip the directory enumeration;
+- queue and object allocation become dominant at very large scales.
+
+Experiment:
+- Controlled local benchmark with 100,000 source files and 100,000 target files under identical timestamps produced approximately 8.51 seconds for the current implementation and 8.78 seconds for version 1.53.
+- A 100,000-file modified-tree run produced approximately 10.70 seconds current versus 10.85 seconds for version 1.53.
+- The updated benchmark runner measured the threshold implementation at 1,471 ms for 10,000 files, 8,463 ms for 50,000 files, and 18,492 ms for 100,000 files; all three scenarios selected streaming traversal.
+- These results were effectively within noise and showed no repeatable large-tree advantage for retaining both traversal indexes.
+
+Implementation:
+- Mirror modes now sample both roots up to a bounded threshold of 10,000 directory/file entries.
+- Below the threshold, `ABMirror` and `BAMirror` use the relative-path index.
+- At or above the threshold, mirror modes use the streaming `generateSyncQ()` visitor, which does not retain the complete entry index.
+- Bidirectional and custom modes remain unchanged.
+
+Status: kept. The threshold avoids the large-tree index allocation while preserving the small-tree optimization; benchmark coverage now includes 10,000, 50,000, and 100,000-file scenarios.
+
 ## Experiment log summary
 Status legend:
 - Kept: implemented and benchmarked successfully
@@ -145,6 +169,7 @@ Status legend:
 11. ❎ Rejected: bucketed queue views by status; controlled benchmark was 69/81/187 ms versus 90/87/180 ms, with mixed gains and a 1500-file regression
 12. ❎ Rejected: comparison-predicate helper extraction; 19 tests passed, benchmark averaged 178/218/365 ms and the change was reverted
 13. ✅ Completed: removed unreferenced `FileLister` standalone demo utility
+14. ✅ Kept: thresholded mirror traversal; relative-path indexes remain enabled below 10,000 entries and large mirrors use streaming analysis
 
 ## Recommendation
-The unidirectional mirror traversal index remains the only traversal optimization with controlled improvement. Bucketed queue views are rejected: the current benchmark showed mixed gains (69/81 ms at 100/500 files) but a 1500-file regression (187 ms versus 180 ms) and does not exercise UI filter workloads. The bidirectional/custom traversal expansion is also rejected. The remaining optimization opportunities are exhausted in this assessment: the comparison-predicate helper refactor was correctness-safe but benchmarked materially slower and was reverted. No further implementation experiment is recommended without new profiling evidence.
+The unidirectional mirror traversal index remains useful for small and medium trees, but large mirror trees use the streaming visitor to avoid retaining a full index. Bucketed queue views are rejected: the current benchmark showed mixed gains (69/81 ms at 100/500 files) but a 1500-file regression (187 ms versus 180 ms) and does not exercise UI filter workloads. The bidirectional/custom traversal expansion is also rejected. Additional optimization should start with a profiler and a 100,000+ file benchmark, because at large scales filesystem enumeration, queue allocation, and GC are likely to dominate the comparison micro-optimizations.

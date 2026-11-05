@@ -70,6 +70,12 @@ import java.util.HashMap;
 public class Job extends JobObject implements Cloneable {
   private final HashMap<String, Path> pairedPathCache = new HashMap<>();
 
+  /**
+   * Mirror trees below this threshold use the relative-path index. Larger trees use the streaming
+   * visitor so that scanning does not retain every path and wrapper object in memory.
+   */
+  static final int MIRROR_INDEX_MAX_ENTRIES = 10_000;
+
   /** Initializes a new Directory. */
   private Job() {
     init();
@@ -1187,6 +1193,56 @@ public class Job extends JobObject implements Cloneable {
     }
   }
 
+  private boolean countEntriesBeforeLimit(Path root, int[] counted) throws IOException {
+    int maxDepth = (isRecursive() ? Integer.MAX_VALUE : 1);
+    Files.walkFileTree(
+        root,
+        (getSymLinkMode() == SymLinkMode.FollowSymLinks
+            ? EnumSet.of(FileVisitOption.FOLLOW_LINKS)
+            : EnumSet.noneOf(FileVisitOption.class)),
+        maxDepth,
+        new SimpleFileVisitor<Path>() {
+          int depth = -1;
+
+          @Override
+          public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+            depth++;
+            if (depth > 0 && counted[0] >= MIRROR_INDEX_MAX_ENTRIES) {
+              return FileVisitResult.TERMINATE;
+            }
+            if (depth > 0) {
+              counted[0]++;
+              if (counted[0] >= MIRROR_INDEX_MAX_ENTRIES) {
+                return FileVisitResult.TERMINATE;
+              }
+            }
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+            counted[0]++;
+            if (counted[0] >= MIRROR_INDEX_MAX_ENTRIES) {
+              return FileVisitResult.TERMINATE;
+            }
+            return FileVisitResult.CONTINUE;
+          }
+        });
+    return counted[0] >= MIRROR_INDEX_MAX_ENTRIES;
+  }
+
+  private boolean mirrorUsesTreeIndex(Path sourceRoot, Path targetRoot) {
+    try {
+      int[] counted = {0};
+      if (countEntriesBeforeLimit(sourceRoot, counted)) {
+        return false;
+      }
+      return !countEntriesBeforeLimit(targetRoot, counted);
+    } catch (IOException exc) {
+      return false;
+    }
+  }
+
   private HashMap<String, TreeIndexEntry> buildTreeIndex(Path root, boolean countAnalyzed)
       throws IOException {
     HashMap<String, TreeIndexEntry> index = new HashMap<>();
@@ -1399,9 +1455,17 @@ public class Job extends JobObject implements Cloneable {
       throw new IncompleteConfigurationException();
     }
     if (syncMode == SyncMode.ABMirror) {
-      generateIndexedMirrorSyncQ(fA.toPath(), fB.toPath(), true);
+      if (mirrorUsesTreeIndex(fA.toPath(), fB.toPath())) {
+        generateIndexedMirrorSyncQ(fA.toPath(), fB.toPath(), true);
+      } else {
+        generateSyncQ(fA.toPath(), fB.toPath(), true);
+      }
     } else if (syncMode == SyncMode.BAMirror) {
-      generateIndexedMirrorSyncQ(fA.toPath(), fB.toPath(), false);
+      if (mirrorUsesTreeIndex(fB.toPath(), fA.toPath())) {
+        generateIndexedMirrorSyncQ(fA.toPath(), fB.toPath(), false);
+      } else {
+        generateSyncQ(fA.toPath(), fB.toPath(), false);
+      }
     } else if (syncMode == SyncMode.ABFull
         || syncMode == SyncMode.ABContribute
         || syncMode == SyncMode.ABCustom) {
