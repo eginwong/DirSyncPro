@@ -59,4 +59,7 @@ jpackage \
   --vendor "DirSyncPro" \
   --icon src/main/resources/icons/DirSyncPro.icns \
   --add-modules java.base,java.desktop,java.management \
-  --java-options "-Xmx1g"
+  --java-options "-Xmx1g" \
+  --java-options "-XX:+HeapDumpOnOutOfMemoryError" \
+  --java-options "-XX:HeapDumpPath=dirsyncpro-heap-dump.hprof" \
+  --java-options "-Xlog:gc*:file=dirsyncpro-gc.log:time,uptime,level,tags"

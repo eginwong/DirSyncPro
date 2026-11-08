@@ -7,7 +7,7 @@ Measure the current cost of the sync analyzer before optimization, then rerun th
 From the project root:
 
 ```bash
-export JAVA_HOME=/tmp/java-install/jdk-17.0.20+8/Contents/Home
+export JAVA_HOME=/private/tmp/dirsync-tools/jdk21/jdk-21.0.13+9/Contents/Home
 cd /Users/ericwong/dev/DirSyncPro
 mkdir -p /tmp/dsp-test-classes
 curl -fsSL -o /tmp/javax.annotation-api.jar 'https://repo1.maven.org/maven2/javax/annotation/javax.annotation-api/1.3.2/javax.annotation-api-1.3.2.jar'
@@ -26,7 +26,7 @@ find src/main/java src/test/java -name '*.java' > /tmp/dsp-sources.txt
 
 ### Benchmark command used
 ```bash
-export JAVA_HOME=/tmp/java-install/jdk-17.0.20+8/Contents/Home
+export JAVA_HOME=/private/tmp/dirsync-tools/jdk21/jdk-21.0.13+9/Contents/Home
 cd /Users/ericwong/dev/DirSyncPro
 mkdir -p /tmp/dsp-test-classes
 curl -fsSL -o /tmp/javax.annotation-api.jar 'https://repo1.maven.org/maven2/javax/annotation/javax.annotation-api/1.3.2/javax.annotation-api-1.3.2.jar'

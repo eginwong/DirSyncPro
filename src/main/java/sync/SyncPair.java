@@ -6,7 +6,7 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -18,217 +18,261 @@
 
 package dirsyncpro.sync;
 
+import dirsyncpro.Const;
+import dirsyncpro.Const.SyncPairStatus;
+import dirsyncpro.job.Job;
 import java.io.File;
-
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 import javax.swing.Icon;
 import javax.swing.filechooser.FileSystemView;
 
-import dirsyncpro.Const;
-import dirsyncpro.DirSyncPro;
-import dirsyncpro.Const.IconKey;
-import dirsyncpro.Const.SyncConflictResolutionMode;
-import dirsyncpro.Const.SyncMode;
-import dirsyncpro.Const.SyncPairStatus;
-import dirsyncpro.exceptions.WarningException;
-import dirsyncpro.job.Job;
-import dirsyncpro.sync.Sync.SyncError;
-import dirsyncpro.tools.FileTools;
-import dirsyncpro.tools.TextFormatTool;
-
 /**
  * Represents a file pair to synchronize.
- * 
+ *
  * @author O. Givi (info@dirsyncpro.org)
  */
+public class SyncPair {
 
-public class SyncPair{
-	
-	private File fileA;
-	private long dateA;
-	private long sizeA;
-	private File fileB;
-	private long dateB;
-	private long sizeB;
-	private boolean fileAExists;
-	private boolean fileBExists;
-	private boolean fileAIsDir;
-	private boolean fileBIsDir;
-	private Const.SyncPairStatus syncPairStatus;
-	private boolean synced;
-	private Job job;
-	private Icon icon = null; 
-	
-	public SyncPair(File a, File b, boolean fAEx, boolean fBEx, boolean fAD, boolean fBD, long fADate, long fBDate, long fAS, long fBS, SyncPairStatus sps, boolean ab, Job j){
-		fileA = a;
-		fileB = b;
-		sizeA = fAS;
-		sizeB = fBS;
-		dateA = fADate;
-		dateB = fBDate;
-		fileAExists = fAEx;
-		fileBExists = fBEx;
-		fileAIsDir = fAD;
-		fileBIsDir = fBD;
-		synced = false;
-		icon = null;
-		syncPairStatus = sps;
-		job = j;
-		if (icon == null){
-			//if the icon is already saved, don't delete it.
-			if (fileAExists){
-				try{
-					icon = FileSystemView.getFileSystemView().getSystemIcon(fileA);
-				}catch (Exception e){
-					icon = null;
-				}
-			}else{
-				try{
-					icon = FileSystemView.getFileSystemView().getSystemIcon(fileB);
-				}catch (Exception e){
-					icon = null;
-				}
-			}
-		}
-	}
+  private File fileA;
+  private long dateA;
+  private long sizeA;
+  private File fileB;
+  private long dateB;
+  private long sizeB;
+  private boolean fileAExists;
+  private boolean fileBExists;
+  private boolean fileAIsDir;
+  private boolean fileBIsDir;
+  private Const.SyncPairStatus syncPairStatus;
+  private boolean synced;
+  private Job job;
 
-	public File getFileA() {
-		return fileA;
-	}
+  private static final int ICON_CACHE_MAX_SIZE = 128;
+  private static final Map<String, Icon> ICON_CACHE =
+      Collections.synchronizedMap(
+          new LinkedHashMap<String, Icon>(ICON_CACHE_MAX_SIZE, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, Icon> eldest) {
+              return size() > ICON_CACHE_MAX_SIZE;
+            }
+          });
 
-	public File getFileB() {
-		return fileB;
-	}
+  public SyncPair(
+      File a,
+      File b,
+      boolean fAEx,
+      boolean fBEx,
+      boolean fAD,
+      boolean fBD,
+      long fADate,
+      long fBDate,
+      long fAS,
+      long fBS,
+      SyncPairStatus sps,
+      boolean ab,
+      Job j) {
+    fileA = a;
+    fileB = b;
+    sizeA = fAS;
+    sizeB = fBS;
+    dateA = fADate;
+    dateB = fBDate;
+    fileAExists = fAEx;
+    fileBExists = fBEx;
+    fileAIsDir = fAD;
+    fileBIsDir = fBD;
+    synced = false;
+    syncPairStatus = sps;
+    job = j;
+  }
 
-	public SyncPairStatus getSyncPairStatus() {
-		return syncPairStatus;
-	}
+  private static String getIconCacheKey(File file) {
+    if (file.isDirectory()) {
+      return "<directory>";
+    }
+    String name = file.getName();
+    int separator = name.lastIndexOf('.');
+    if (separator >= 0 && separator < name.length() - 1) {
+      return "<file>." + name.substring(separator + 1).toLowerCase(Locale.ROOT);
+    }
+    return "<file>";
+  }
 
-	protected void setSyncPairStatus(Const.SyncPairStatus syncPairStatus) {
-		this.syncPairStatus = syncPairStatus;
-	}
+  private static Icon getLazyIcon(File file) {
+    if (file == null) {
+      return null;
+    }
+    String key = getIconCacheKey(file);
+    synchronized (ICON_CACHE) {
+      Icon cached = ICON_CACHE.get(key);
+      if (cached != null) {
+        return cached;
+      }
+    }
+    try {
+      Icon resolved = FileSystemView.getFileSystemView().getSystemIcon(file);
+      synchronized (ICON_CACHE) {
+        ICON_CACHE.put(key, resolved);
+      }
+      return resolved;
+    } catch (Exception e) {
+      return null;
+    }
+  }
 
-	public void setFileA(File fileA) {
-		this.fileA = fileA;
-	}
+  private Icon getPairIcon() {
+    if (syncPairStatus == SyncPairStatus.FileAIsRedundant
+        || syncPairStatus == SyncPairStatus.DirAIsRedundant) {
+      return getLazyIcon(fileAExists ? fileA : fileB);
+    }
+    if (syncPairStatus == SyncPairStatus.FileBIsRedundant
+        || syncPairStatus == SyncPairStatus.DirBIsRedundant) {
+      return getLazyIcon(fileBExists ? fileB : fileA);
+    }
+    return getLazyIcon(fileAExists ? fileA : fileB);
+  }
 
-	public void setFileB(File fileB) {
-		this.fileB = fileB;
-	}
-	
-	public void setSynced(){
-		this.synced = true;
-		switch(syncPairStatus){
-			case FileACopyForced:
-			case FileAIsNew:
-			case FileAIsModified:
-			case FileAIsLarger:
-			case FileAIsLargerAndModified:
-			case DirACopyForced:
-			case DirAIsNew:
-			case DirAIsModified:
-			case FileBIsRedundant:
-			case DirBIsRedundant:
-				fileBExists = fileB.exists();
-				fileBIsDir = fileB.isDirectory();
-				dateB = (fileBExists ? fileB.lastModified(): 0);
-				sizeB = (fileBExists ? fileB.length(): 0);
-				break;
-			case FileBCopyForced:
-			case FileBIsNew:
-			case FileBIsModified:
-			case FileBIsLarger:
-			case FileBIsLargerAndModified:
-			case DirBCopyForced:
-			case DirBIsNew:
-			case DirBIsModified:
-			case FileAIsRedundant:
-			case DirAIsRedundant:
-				fileAExists = fileA.exists();
-				fileAIsDir = fileA.isDirectory();
-				dateA = (fileAExists ? fileA.lastModified(): 0);
-				sizeA = (fileAExists ? fileA.length(): 0);
-				break;
-		case ConflictResolutionModified:
-		case ConflictResolutionRename:
-		case ConflictResolutionWarn:
-			fileAExists = fileA.exists();
-			fileAIsDir = fileA.isDirectory();
-			dateA = (fileAExists ? fileA.lastModified(): 0);
-			sizeA = (fileAExists ? fileA.length(): 0);
-			fileBExists = fileB.exists();
-			fileBIsDir = fileB.isDirectory();
-			dateB = (fileBExists ? fileB.lastModified(): 0);
-			sizeB = (fileBExists ? fileB.length(): 0);
-			break;
-		}
-			
-	}
-	
-	public boolean isSynced(){
-		return synced;
-	}
+  public File getFileA() {
+    return fileA;
+  }
 
-	/**
-	 * @return the deletedFileIcon
-	 */
-	public Icon getIconA() {
-		if (syncPairStatus == SyncPairStatus.FileAIsRedundant || syncPairStatus == SyncPairStatus.DirAIsRedundant){
-			return icon;
-		}else if (fileAExists){
-			return icon;
-		}else{
-			return null;
-		}
-	}
+  public File getFileB() {
+    return fileB;
+  }
 
-	public Icon getIconB() {
-		if (syncPairStatus == SyncPairStatus.FileBIsRedundant || syncPairStatus == SyncPairStatus.DirBIsRedundant){
-			return icon;
-		}else if (fileBExists){
-			return icon;
-		}else{
-			return null;
-		}
-	}
+  public SyncPairStatus getSyncPairStatus() {
+    return syncPairStatus;
+  }
 
-	public Job getJob() {
-		return job;
-	}
+  protected void setSyncPairStatus(Const.SyncPairStatus syncPairStatus) {
+    this.syncPairStatus = syncPairStatus;
+  }
 
-	public void setJob(Job job) {
-		this.job = job;
-	}
-	
-	public long getDateA() {
-		return dateA;
-	}
+  public void setFileA(File fileA) {
+    this.fileA = fileA;
+  }
 
-	public long getSizeA() {
-		return sizeA;
-	}
+  public void setFileB(File fileB) {
+    this.fileB = fileB;
+  }
 
-	public long getDateB() {
-		return dateB;
-	}
+  public void setSynced() {
+    this.synced = true;
+    switch (syncPairStatus) {
+      case FileACopyForced:
+      case FileAIsNew:
+      case FileAIsModified:
+      case FileAIsLarger:
+      case FileAIsLargerAndModified:
+      case DirACopyForced:
+      case DirAIsNew:
+      case DirAIsModified:
+      case FileBIsRedundant:
+      case DirBIsRedundant:
+        fileBExists = fileB.exists();
+        fileBIsDir = fileB.isDirectory();
+        dateB = (fileBExists ? fileB.lastModified() : 0);
+        sizeB = (fileBExists ? fileB.length() : 0);
+        break;
+      case FileBCopyForced:
+      case FileBIsNew:
+      case FileBIsModified:
+      case FileBIsLarger:
+      case FileBIsLargerAndModified:
+      case DirBCopyForced:
+      case DirBIsNew:
+      case DirBIsModified:
+      case FileAIsRedundant:
+      case DirAIsRedundant:
+        fileAExists = fileA.exists();
+        fileAIsDir = fileA.isDirectory();
+        dateA = (fileAExists ? fileA.lastModified() : 0);
+        sizeA = (fileAExists ? fileA.length() : 0);
+        break;
+      case ConflictResolutionModified:
+      case ConflictResolutionRename:
+      case ConflictResolutionWarn:
+        fileAExists = fileA.exists();
+        fileAIsDir = fileA.isDirectory();
+        dateA = (fileAExists ? fileA.lastModified() : 0);
+        sizeA = (fileAExists ? fileA.length() : 0);
+        fileBExists = fileB.exists();
+        fileBIsDir = fileB.isDirectory();
+        dateB = (fileBExists ? fileB.lastModified() : 0);
+        sizeB = (fileBExists ? fileB.length() : 0);
+        break;
+    }
+  }
 
-	public long getSizeB() {
-		return sizeB;
-	}
+  public boolean isSynced() {
+    return synced;
+  }
 
-	public boolean isFileAExists() {
-		return fileAExists;
-	}
+  /**
+   * @return the deletedFileIcon
+   */
+  public Icon getIconA() {
+    if (syncPairStatus == SyncPairStatus.FileAIsRedundant
+        || syncPairStatus == SyncPairStatus.DirAIsRedundant) {
+      return getPairIcon();
+    } else if (fileAExists) {
+      return getPairIcon();
+    } else {
+      return null;
+    }
+  }
 
-	public void setFileAExists(boolean fileAExists) {
-		this.fileAExists = fileAExists;
-	}
+  public Icon getIconB() {
+    if (syncPairStatus == SyncPairStatus.FileBIsRedundant
+        || syncPairStatus == SyncPairStatus.DirBIsRedundant) {
+      return getPairIcon();
+    } else if (fileBExists) {
+      return getPairIcon();
+    } else {
+      return null;
+    }
+  }
 
-	public boolean isFileBExists() {
-		return fileBExists;
-	}
+  public Job getJob() {
+    return job;
+  }
 
-	public void setFileBExists(boolean fileBExists) {
-		this.fileBExists = fileBExists;
-	}
-	
+  public void setJob(Job job) {
+    this.job = job;
+  }
+
+  public long getDateA() {
+    return dateA;
+  }
+
+  public long getSizeA() {
+    return sizeA;
+  }
+
+  public long getDateB() {
+    return dateB;
+  }
+
+  public long getSizeB() {
+    return sizeB;
+  }
+
+  public boolean isFileAExists() {
+    return fileAExists;
+  }
+
+  public void setFileAExists(boolean fileAExists) {
+    this.fileAExists = fileAExists;
+  }
+
+  public boolean isFileBExists() {
+    return fileBExists;
+  }
+
+  public void setFileBExists(boolean fileBExists) {
+    this.fileBExists = fileBExists;
+  }
 }

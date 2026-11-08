@@ -4,10 +4,13 @@ How to run DirSync Pro:
   java -jar dirsyncpro.jar
 
   If you want to allocate more memory to DirSyncPro, use the following
-  command to run DirSync Pro with 512MB (adjust to own will):
-  java -Xmx512M -jar dirsyncpro.jar
+  command to run DirSync Pro with 1GB (adjust to own will):
+  java -Xmx1G -jar dirsyncpro.jar
 
-  The wrapper DirSyncPro.exe itself already uses 512MB memory.
+  Native packages use 1GB maximum heap memory. They also write heap and GC
+  diagnostics on memory failures when JVM logging is available:
+  dirsyncpro-heap-dump.hprof
+  dirsyncpro-gc.log
 
 Building and packaging locally:
   Prerequisites:

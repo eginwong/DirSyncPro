@@ -65,4 +65,7 @@ jpackage `
   --add-modules java.base,java.desktop,java.management `
   --win-shortcut `
   --win-menu `
-  --java-options "-Xmx1g"
+  --java-options "-Xmx1g" `
+  --java-options "-XX:+HeapDumpOnOutOfMemoryError" `
+  --java-options "-XX:HeapDumpPath=dirsyncpro-heap-dump.hprof" `
+  --java-options "-Xlog:gc*:file=dirsyncpro-gc.log:time,uptime,level,tags"
